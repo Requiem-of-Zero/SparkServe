@@ -3,7 +3,7 @@ services:
     image: nginx
     container_name: pos-nginx
 
-    # Publish host port 8081 -> container port 80
+    # Publish host port 8080 -> container port 80
     ports:
       - "8080:80"
 
