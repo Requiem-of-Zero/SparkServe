@@ -1,0 +1,42 @@
+services:
+  nginx:
+    image: nginx
+    container_name: pos-nginx
+
+    # Publish host port 8081 -> container port 80
+    ports:
+      - "8080:80"
+
+    # Mount NGINX configs
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+
+    # Start the application container before nginx
+    depends_on:
+      - pos-app
+
+    # NGINX can see both networks
+    networks:
+      - frontend-net
+      - app_net
+
+  pos_app:
+    # Build an image using the Dockerfile
+    build:
+      context: ./pos-app
+
+    container_name: pos-app
+
+    # Runtime configuration
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+
+    # Only connected to internal application network
+    networks:
+      - app_net
+
+# Network definitions
+networks:
+  frontend_net:
+  app_net:
