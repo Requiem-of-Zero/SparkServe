@@ -1,0 +1,34 @@
+# Dependencies installed by npm/yarn/pnpm.
+node_modules/
+.pnp
+.pnp.*
+
+# Next.js build output.
+.next/
+out/
+build/
+next-env.d.ts
+*.tsbuildinfo
+
+# Test and coverage output.
+coverage/
+
+# Local environment files and secrets.
+.env
+.env.*
+*.pem
+
+# Logs from package managers and dev servers.
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Tooling state that is local to one machine.
+.vercel/
+.turbo/
+.cache/
+
+# OS/editor noise.
+.DS_Store
+Thumbs.db
