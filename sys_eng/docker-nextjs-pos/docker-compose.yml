@@ -18,7 +18,7 @@ services:
     # NGINX can see both networks
     networks:
       - frontend-net
-      - app_net
+      - app-net
 
   pos_app:
     # Build an image using the Dockerfile
@@ -34,9 +34,9 @@ services:
 
     # Only connected to internal application network
     networks:
-      - app_net
+      - app-net
 
 # Network definitions
 networks:
-  frontend_net:
-  app_net:
+  frontend-net:
+  app-net:
