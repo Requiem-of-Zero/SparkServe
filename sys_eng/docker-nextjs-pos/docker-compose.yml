@@ -20,7 +20,7 @@ services:
       - frontend-net
       - app-net
 
-  pos_app:
+  pos-app:
     # Build an image using the Dockerfile
     build:
       context: ./pos-app
