@@ -16,6 +16,8 @@ type OrderItem = {
   quantity: number;
 };
 
+const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Default App Name";
+
 export default function Home() {
   const [order, setOrder] = useState<OrderItem[]>([]);
 
@@ -44,7 +46,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-zinc-950 p-8 text-white">
       <section className="mx-auto max-w-5xl">
-        <h1 className="text-4xl font-bold">Restaurant POS Homelab</h1>
+        <h1 className="text-4xl font-bold">{appName}</h1>
         <p className="mt-2 text-zinc-400">
           Tiny Next.js point-of-sale app deployed behind NGINX.
         </p>
