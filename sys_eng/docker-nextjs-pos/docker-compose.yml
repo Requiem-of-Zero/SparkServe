@@ -24,8 +24,13 @@ services:
     # Build an image using the Dockerfile
     build:
       context: ./pos-app
+      args:
+        NEXT_PUBLIC_APP_NAME: Restaurant POS Homelab
+        NEXT_PUBLIC_DEPLOYMENT_ENV: docker-compose
 
     container_name: pos-app
+    env_file:
+      - ./pos-app/.env.production
 
     # Runtime configuration
     environment:
@@ -35,6 +40,9 @@ services:
     # Only connected to internal application network
     networks:
       - app-net
+
+  postgres:
+    image: postgres:17
 
 # Network definitions
 networks:
