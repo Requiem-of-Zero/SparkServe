@@ -2,19 +2,15 @@ services:
   nginx:
     image: nginx
     container_name: pos-nginx
-
     # Publish host port 8080 -> container port 80
     ports:
       - "8080:80"
-
     # Mount NGINX configs
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-
     # Start the application container before nginx
     depends_on:
       - pos-app
-
     # NGINX can see both networks
     networks:
       - frontend-net
@@ -27,24 +23,36 @@ services:
       args:
         NEXT_PUBLIC_APP_NAME: Restaurant POS Homelab
         NEXT_PUBLIC_DEPLOYMENT_ENV: docker-compose
-
     container_name: pos-app
     env_file:
       - ./pos-app/.env.production
-
     # Runtime configuration
     environment:
       - NODE_ENV=production
       - PORT=3000
-
     # Only connected to internal application network
     networks:
       - app-net
 
   postgres:
     image: postgres:17
+    # Initialize database creds on first startup
+    environment:
+      POSTGRES_USER: pos_user
+      POSTGRES_PASSWORD: pos_password
+      POSTGRES_DB: pos_db
+    # Persist database files outside the container
+    # Prevents data loss when containers are recreated
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - app-net
 
 # Network definitions
 networks:
   frontend-net:
   app-net:
+
+volumes:
+  # Named Docker volume for PostgreSQL data persistence
+  postgres-data:
