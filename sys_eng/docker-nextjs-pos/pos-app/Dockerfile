@@ -16,6 +16,13 @@ RUN yarn install
 # Copy the rest of the application source code.
 COPY . .
 
+# Pass build-time environment variables to Next.js
+ARG NEXT_PUBLIC_APP_NAME
+ARG NEXT_PUBLIC_DEPLOYMENT_ENV
+
+ENV NEXT_PUBLIC_APP_NAME=$NEXT_PUBLIC_APP_NAME
+ENV NEXT_PUBLIC_DEPLOYMENT_ENV=$NEXT_PUBLIC_DEPLOYMENT_ENV
+
 # Build the Next.js production application
 RUN yarn build
 
