@@ -48,6 +48,15 @@ services:
     networks:
       - app-net
 
+  node-exporter:
+    # Exposes Ubuntu host metrics
+    # CPU, memory, disk, and network
+    # Prometheus will scrape this service for Linux sys health data
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    ports:
+      - "9100:9100"
+
 # Network definitions
 networks:
   frontend-net:
