@@ -56,6 +56,33 @@ services:
     container_name: node-exporter
     ports:
       - "9100:9100"
+    networks:
+      - app-net
+
+  prometheus:
+    # Metrics db
+    # Scrapes metrics from node-exporter and stores time-series data
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      # Mount Prometheus scrape config into the container
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - app-net
+
+  grafana:
+    # Dashboard and visualization tool
+    # Connects Prometheus and displays metrics as graphs
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - app-net
 
 # Network definitions
 networks:
@@ -65,3 +92,4 @@ networks:
 volumes:
   # Named Docker volume for PostgreSQL data persistence
   postgres-data:
+  grafana-data:
