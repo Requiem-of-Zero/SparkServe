@@ -59,6 +59,20 @@ services:
     networks:
       - app-net
 
+  blackbox-exporter:
+    # Performs uptime and endpoint health checks
+    # Prometheus will ask Blockbox to test website/services
+    image: prom/blackbox-exporter:latest
+    container_name: blackbox-exporter
+    volumes:
+      - ./monitoring/blackbox.yml:/config/blackbox.yml:ro
+    command:
+      - "--config.file=/config/blackbox.yml"
+    ports:
+      - "9115:9115"
+    networks:
+      - app-net
+
   prometheus:
     # Metrics db
     # Scrapes metrics from node-exporter and stores time-series data
