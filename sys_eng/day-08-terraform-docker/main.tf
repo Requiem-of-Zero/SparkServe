@@ -9,6 +9,10 @@ terraform {
 
 provider "docker" {}
 
-resource "docker_network" "app_net" {
-  name = var.network_name
+output "restaurant_summary" {
+  value = {
+    name   = var.restaurant_name
+    domain = var.restaurant_domain
+    host   = var.restaurant_host
+  }
 }
