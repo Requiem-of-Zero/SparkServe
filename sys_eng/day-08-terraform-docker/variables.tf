@@ -33,6 +33,29 @@ variable "ssh_private_key_path" {
   default     = "~/.ssh/id_ed25519"
 }
 
+# Grafana SMTP settings for email alert delivery. Override these in an ignored
+# terraform.tfvars file or with TF_VAR_grafana_smtp when using real credentials.
+variable "grafana_smtp" {
+  description = "SMTP settings Grafana uses to send alert emails."
+  type = object({
+    enabled      = bool
+    host         = string
+    user         = string
+    password     = string
+    from_address = string
+    from_name    = string
+  })
+  sensitive = true
+  default = {
+    enabled      = false
+    host         = ""
+    user         = ""
+    password     = ""
+    from_address = ""
+    from_name    = "Samwo Grafana"
+  }
+}
+
 # Legacy single-restaurant variables from the first learning step.
 # The current scalable model uses var.restaurants instead.
 variable "restaurant_name" {
