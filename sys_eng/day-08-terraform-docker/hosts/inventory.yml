@@ -11,11 +11,11 @@ platform:
         - blackbox-exporter
 
   restaurants:
-    default:
-      name: default-restaurant
+    big-fish-house:
+      name: bfh-restaurant
       role: restaurant-pos
       host: 192.168.1.28
-      domain: default-restaurant.samuelwong.xyz
+      domain: bfh-restaurant.samuelwong.xyz
       ssh_user: sungjinwong
       deploy_base_path: /home/sungjinwong/samwo-platform/restaurants
       services:

@@ -4,26 +4,27 @@ services:
     container_name: ${restaurant_key}-nginx
     ports:
       - "8080:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       - frontend
       - backend
 
   pos-app:
+    build:
+      context: ./pos-app
     image: ${restaurant_key}-pos-app:local
     container_name: ${restaurant_key}-pos-app
-    environment:
-      NEXT_PUBLIC_APP_NAME: "${restaurant.name}"
-      NEXT_PUBLIC_DEPLOYMENT_ENV: "homelab"
+    env_file:
+      - ./pos-app/.env.production
     networks:
       - backend
 
   postgres:
     image: postgres:17
     container_name: ${restaurant_key}-postgres
-    environment:
-      POSTGRES_USER: pos_user
-      POSTGRES_PASSWORD: pos_password
-      POSTGRES_DB: pos_db
+    env_file:
+      - ./pos-app/.env.production
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
