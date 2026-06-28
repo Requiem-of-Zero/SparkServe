@@ -1,0 +1,51 @@
+services:
+  nginx:
+    image: nginx:stable
+    container_name: ${restaurant_key}-nginx
+    ports:
+      - "8080:80"
+    networks:
+      - frontend
+      - backend
+
+  pos-app:
+    image: ${restaurant_key}-pos-app:local
+    container_name: ${restaurant_key}-pos-app
+    environment:
+      NEXT_PUBLIC_APP_NAME: "${restaurant.name}"
+      NEXT_PUBLIC_DEPLOYMENT_ENV: "homelab"
+    networks:
+      - backend
+
+  postgres:
+    image: postgres:17
+    container_name: ${restaurant_key}-postgres
+    environment:
+      POSTGRES_USER: pos_user
+      POSTGRES_PASSWORD: pos_password
+      POSTGRES_DB: pos_db
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - backend
+
+    node-exporter:
+      image: prom/node-exporter:latest
+      container_name: ${restaurant_key}-node-exporter
+      restart: unless-stopped
+      ports:
+        - "9100:9100"
+      pid: host
+      volumes:
+        - /:/host:ro,rslave
+      command:
+        - "--path.rootfs=/host"
+      networks:
+        - backend
+
+networks:
+  frontend:
+  backend:
+
+volumes:
+  postgres-data:
