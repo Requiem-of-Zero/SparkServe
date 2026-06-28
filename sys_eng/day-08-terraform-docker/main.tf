@@ -8,6 +8,10 @@ terraform {
       source  = "hashicorp/local"
       version = "~> 2.5"
     }
+    null = {
+      source  = "hashicorp/null"
+      version = "~> 3.2"
+    }
   }
 }
 
@@ -49,6 +53,40 @@ resource "local_file" "restaurant_compose" {
     restaurant_key = each.key
     restaurant     = each.value
   })
+}
+
+# Resource that checks if there is a docker-compose already existing, if not; it will copy the template compose for the restaurant
+resource "null_resource" "push_restaurant_compose" {
+  for_each = var.restaurants
+
+  triggers = {
+    compose_sha = local_file.restaurant_compose[each.key].content_sha256
+  }
+
+  connection {
+    type        = "ssh"
+    host        = each.value.host
+    user        = each.value.ssh_user
+    private_key = file(pathexpand(var.ssh_private_key_path))
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "mkdir -p ${each.value.deploy_base_path}/${each.key}"
+    ]
+  }
+
+  provisioner "file" {
+    source      = local_file.restaurant_compose[each.key].filename
+    destination = "${each.value.deploy_base_path}/${each.key}/docker-compose.yml"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "cd ${each.value.deploy_base_path}/${each.key}",
+      "docker compose config"
+    ]
+  }
 }
 
 output "platform_summary" {

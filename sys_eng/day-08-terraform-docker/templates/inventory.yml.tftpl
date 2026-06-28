@@ -19,6 +19,8 @@ platform:
       role: restaurant-pos
       host: ${restaurant.host}
       domain: ${restaurant.domain}
+      ssh_user: ${restaurant.ssh_user}
+      deploy_base_path: ${restaurant.deploy_base_path}
       services:
         - nginx
         - pos-app
