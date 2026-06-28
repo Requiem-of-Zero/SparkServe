@@ -1,0 +1,35 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["prometheus:9090"]
+
+  - job_name: "restaurant-node-exporters"
+    static_configs:
+%{ for key, restaurant in restaurants ~}
+      - targets: ["${restaurant.host}:9100"]
+        labels:
+          restaurant: "${key}"
+          domain: "${restaurant.domain}"
+%{ endfor ~}
+
+  - job_name: "restaurant-http"
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+%{ for key, restaurant in restaurants ~}
+      - targets: ["http://${restaurant.host}:8080"]
+        labels:
+          restaurant: "${key}"
+          domain: "${restaurant.domain}"
+%{ endfor ~}
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
