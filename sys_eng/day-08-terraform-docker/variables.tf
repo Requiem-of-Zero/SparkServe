@@ -1,3 +1,18 @@
+variable "restaurants" {
+  description = "Restaurant POS hosts managed by this platform."
+  type = map(object({
+    name   = string
+    host   = string
+    domain = string
+  }))
+  default = {
+    default = {
+      name   = "default-restaurant"
+      host   = "192.168.1.28"
+      domain = "default-restaurant.samuelwong.xyz"
+    }
+  }
+}
 variable "restaurant_name" {
   description = "Name for restaurant"
   type        = string
@@ -14,6 +29,22 @@ variable "restaurant_host" {
   description = "IP address or hostname of the Ubuntu machine"
   type        = string
   default     = "192.168.1.28"
+}
+
+variable "monitors" {
+  description = "Monitoring hosts that run platform observability services"
+  type = map(object({
+    name   = string
+    host   = string
+    domain = string
+  }))
+  default = {
+    primary = {
+      name   = "central-monitor"
+      host   = "192.168.1.58"
+      domain = "monitor.samuelwong.xyz"
+    }
+  }
 }
 
 variable "monitor_name" {

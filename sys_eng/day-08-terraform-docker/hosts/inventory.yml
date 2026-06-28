@@ -1,21 +1,23 @@
 platform:
-  monitor:
-    name: central-monitor
-    role: monitoring
-    host: 192.168.1.58
-    domain: monitor.samuelwong.xyz
-    services:
-      - prometheus
-      - grafana
-      - blackbox-exporter
+  monitors:
+    primary:
+      name: central-monitor
+      role: monitoring
+      host: 192.168.1.58
+      domain: monitor.samuelwong.xyz
+      services:
+        - prometheus
+        - grafana
+        - blackbox-exporter
 
-  restaurant:
-    name: default-restaurant-name
-    role: restaurant-pos
-    host: 192.168.1.28
-    domain: default-restaurant.samuelwong.xyz
-    services:
-      - nginx
-      - pos-app
-      - postgres
-      - node-exporter
+  restaurants:
+    default:
+      name: default-restaurant
+      role: restaurant-pos
+      host: 192.168.1.28
+      domain: default-restaurant.samuelwong.xyz
+      services:
+        - nginx
+        - pos-app
+        - postgres
+        - node-exporter

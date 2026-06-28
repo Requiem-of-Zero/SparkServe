@@ -1,4 +1,8 @@
 # Homelab host mappings
 # host ip | host public domain
-${monitor_host} ${monitor_domain}
-${restaurant_host} ${restaurant_domain}
+%{ for key, monitor in monitors ~}
+${monitor.host} ${monitor.domain}
+%{ endfor ~}
+%{ for key, restaurant in restaurants ~}
+${restaurant.host} ${restaurant.domain}
+%{ endfor ~}

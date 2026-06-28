@@ -1,21 +1,27 @@
 platform:
-  monitor:
-    name: ${monitor_name}
-    role: monitoring
-    host: ${monitor_host}
-    domain: ${monitor_domain}
-    services:
-      - prometheus
-      - grafana
-      - blackbox-exporter
+  monitors:
+%{ for key, monitor in monitors ~}
+    ${key}:
+      name: ${monitor.name}
+      role: monitoring
+      host: ${monitor.host}
+      domain: ${monitor.domain}
+      services:
+        - prometheus
+        - grafana
+        - blackbox-exporter
+%{ endfor ~}
 
-  restaurant:
-    name: ${restaurant_name}
-    role: restaurant-pos
-    host: ${restaurant_host}
-    domain: ${restaurant_domain}
-    services:
-      - nginx
-      - pos-app
-      - postgres
-      - node-exporter
+  restaurants:
+%{ for key, restaurant in restaurants ~}
+    ${key}:
+      name: ${restaurant.name}
+      role: restaurant-pos
+      host: ${restaurant.host}
+      domain: ${restaurant.domain}
+      services:
+        - nginx
+        - pos-app
+        - postgres
+        - node-exporter
+%{ endfor ~}

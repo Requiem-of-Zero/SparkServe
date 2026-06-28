@@ -20,12 +20,8 @@ resource "local_file" "host_inventory" {
   directory_permission = "0755"
 
   content = templatefile("${path.module}/templates/inventory.yml.tftpl", {
-    monitor_name      = var.monitor_name
-    monitor_host      = var.monitor_host
-    monitor_domain    = var.monitor_domain
-    restaurant_name   = var.restaurant_name
-    restaurant_host   = var.restaurant_host
-    restaurant_domain = var.restaurant_domain
+    monitors    = var.monitors
+    restaurants = var.restaurants
   })
 }
 
@@ -36,27 +32,14 @@ resource "local_file" "hosts_file" {
   directory_permission = "0755"
 
   content = templatefile("${path.module}/templates/hosts.tftpl", {
-    monitor_host      = var.monitor_host
-    monitor_domain    = var.monitor_domain
-    restaurant_host   = var.restaurant_host
-    restaurant_domain = var.restaurant_domain
+    monitors    = var.monitors
+    restaurants = var.restaurants
   })
 }
 
 output "platform_summary" {
   value = {
-    monitor = {
-      role   = "monitoring"
-      name   = var.monitor_name
-      domain = var.monitor_domain
-      host   = var.monitor_host
-    }
-
-    restaurant = {
-      role   = "restaurant-pos"
-      name   = var.restaurant_name
-      domain = var.restaurant_domain
-      host   = var.restaurant_host
-    }
+    monitors    = var.monitors
+    restaurants = var.restaurants
   }
 }
