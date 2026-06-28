@@ -1,4 +1,5 @@
 terraform {
+  # Provider plugins used by this Terraform stack.
   required_providers {
     docker = {
       source  = "kreuzwerker/docker"
@@ -17,6 +18,7 @@ terraform {
 
 provider "docker" {}
 
+# Generates a YAML inventory of monitors, restaurants, services, and deploy metadata.
 resource "local_file" "host_inventory" {
   filename = "${path.module}/hosts/inventory.yml"
 
@@ -29,6 +31,7 @@ resource "local_file" "host_inventory" {
   })
 }
 
+# Generates a Linux hosts-file style mapping for local DNS testing.
 resource "local_file" "hosts_file" {
   filename = "${path.module}/hosts/hosts"
 
@@ -41,6 +44,7 @@ resource "local_file" "hosts_file" {
   })
 }
 
+# Generates one Docker Compose file per restaurant.
 resource "local_file" "restaurant_compose" {
   for_each = var.restaurants
 
@@ -55,12 +59,42 @@ resource "local_file" "restaurant_compose" {
   })
 }
 
-# Resource that checks if there is a docker-compose already existing, if not; it will copy the template compose for the restaurant
+# Generates one POS app environment file per restaurant.
+resource "local_file" "restaurant_env" {
+  for_each = var.restaurants
+
+  filename = "${path.module}/generated/restaurants/${each.key}/pos-app.env"
+
+  file_permission      = "0600"
+  directory_permission = "0755"
+
+  content = templatefile("${path.module}/templates/restaurant-env.tftpl", {
+    restaurant = each.value
+  })
+}
+
+# Generates one NGINX reverse-proxy config per restaurant.
+resource "local_file" "restaurant_nginx" {
+  for_each = var.restaurants
+
+  filename = "${path.module}/generated/restaurants/${each.key}/nginx/default.conf"
+
+  file_permission      = "0644"
+  directory_permission = "0755"
+
+  content = templatefile("${path.module}/templates/restaurant-nginx.conf.tftpl", {
+    restaurant = each.value
+  })
+}
+
+# Pushes each generated restaurant bundle to its Ubuntu host over SSH.
 resource "null_resource" "push_restaurant_compose" {
   for_each = var.restaurants
 
   triggers = {
     compose_sha = local_file.restaurant_compose[each.key].content_sha256
+    env_sha     = local_file.restaurant_env[each.key].content_sha256
+    nginx_sha   = local_file.restaurant_nginx[each.key].content_sha256
   }
 
   connection {
@@ -72,13 +106,28 @@ resource "null_resource" "push_restaurant_compose" {
 
   provisioner "remote-exec" {
     inline = [
-      "mkdir -p ${each.value.deploy_base_path}/${each.key}"
+      "mkdir -p ${each.value.deploy_base_path}/${each.key}/pos-app ${each.value.deploy_base_path}/${each.key}/nginx"
     ]
   }
 
   provisioner "file" {
     source      = local_file.restaurant_compose[each.key].filename
     destination = "${each.value.deploy_base_path}/${each.key}/docker-compose.yml"
+  }
+
+  provisioner "file" {
+    source      = "${path.module}/../docker-nextjs-pos/pos-app"
+    destination = "${each.value.deploy_base_path}/${each.key}"
+  }
+
+  provisioner "file" {
+    source      = local_file.restaurant_env[each.key].filename
+    destination = "${each.value.deploy_base_path}/${each.key}/pos-app/.env.production"
+  }
+
+  provisioner "file" {
+    source      = local_file.restaurant_nginx[each.key].filename
+    destination = "${each.value.deploy_base_path}/${each.key}/nginx/default.conf"
   }
 
   provisioner "remote-exec" {
@@ -89,6 +138,7 @@ resource "null_resource" "push_restaurant_compose" {
   }
 }
 
+# Prints the monitor and restaurant maps after apply.
 output "platform_summary" {
   value = {
     monitors    = var.monitors
