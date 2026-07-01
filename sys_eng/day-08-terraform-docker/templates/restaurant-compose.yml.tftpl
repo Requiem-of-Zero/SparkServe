@@ -44,9 +44,25 @@ services:
     networks:
       - backend
 
+  prometheus-agent:
+    image: prom/prometheus:latest
+    container_name: ${restaurant_key}-prometheus-agent
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--enable-feature=agent"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-agent-data:/prometheus
+    depends_on:
+      - node-exporter
+    networks:
+      - backend
+
 networks:
   frontend:
   backend:
 
 volumes:
   postgres-data:
+  prometheus-agent-data:

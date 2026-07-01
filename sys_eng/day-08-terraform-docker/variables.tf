@@ -56,6 +56,13 @@ variable "grafana_smtp" {
   }
 }
 
+# Remote-write endpoint that restaurant Prometheus agents send metrics to.
+variable "prometheus_remote_write_url" {
+  description = "Central Prometheus remote_write receiver endpoint."
+  type        = string
+  default     = "http://192.168.1.58:9090/api/v1/write"
+}
+
 # Legacy single-restaurant variables from the first learning step.
 # The current scalable model uses var.restaurants instead.
 variable "restaurant_name" {
