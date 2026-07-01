@@ -32,6 +32,23 @@ Use clear business language:
 
 Do not treat QR customers as permanent users at first. They are temporary table sessions.
 
+Employee login is also the foundation for accountability. Any sensitive staff action should eventually be tied to an employee account, especially when cash handling is added.
+
+Examples:
+
+```text
+cash drawer opened
+cash payment received
+discount applied
+order voided
+refund issued
+menu price changed
+employee created
+table checked out
+```
+
+This prevents ambiguous situations where multiple employees could be blamed for the same register or order action.
+
 ## Recommended App Stack
 
 Use libraries for the repetitive foundation:
@@ -52,6 +69,7 @@ Initial models:
 ```text
 RestaurantSettings
 EmployeeProfile
+AuditEvent
 MenuItem
 MenuItemTranslation
 DiningTable
@@ -62,6 +80,38 @@ Payment
 ```
 
 Better Auth will manage its own auth tables for users and sessions. The app should add employee-specific business data through `EmployeeProfile`.
+
+`EmployeeProfile` should store POS-specific employee data:
+
+```text
+auth user id
+role
+active status
+createdAt
+updatedAt
+```
+
+`AuditEvent` should later store sensitive staff activity:
+
+```text
+employeeProfileId
+action
+entityType
+entityId
+metadata
+createdAt
+```
+
+Example actions:
+
+```text
+CASH_DRAWER_OPENED
+ORDER_VOIDED
+REFUND_CREATED
+EMPLOYEE_CREATED
+MENU_PRICE_CHANGED
+TABLE_CHECKED_OUT
+```
 
 ## Theming
 
@@ -171,11 +221,14 @@ Focus:
 - Session cookie support.
 - Sign in and sign out routes.
 - Protect POS and admin pages.
+- Tie Better Auth users to `EmployeeProfile`.
+- Use employee roles for access control.
 
 Done when:
 
 - Employees can log in.
 - Anonymous users cannot access staff pages.
+- Staff identity is available to server actions that change orders, payments, menu items, or employees.
 
 ### 3. Employee Admin
 
@@ -186,10 +239,18 @@ Focus:
 - Owner can create employees.
 - Owner can assign roles: `owner`, `manager`, `cashier`.
 - Owner can deactivate employees.
+- Owner can set a temporary password for a new employee.
+- Employee can later change their password.
 
 Done when:
 
 - Store owner can manage staff without touching the database manually.
+
+Future improvement:
+
+- Replace temporary passwords with setup links or invite emails.
+- Add required password reset after first login.
+- Record employee management changes in `AuditEvent`.
 
 ### 4. Menu Management
 
