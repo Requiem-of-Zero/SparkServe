@@ -4,6 +4,12 @@ This project is the application deployment part of the systems engineering homel
 
 This section currently covers the work starting around Day 4. Days 5 through 8 are planned next steps and will be filled in as the stack grows.
 
+Product roadmap:
+
+```text
+POS_PLATFORM_PLAN.md
+```
+
 ---
 
 ## Current Architecture
