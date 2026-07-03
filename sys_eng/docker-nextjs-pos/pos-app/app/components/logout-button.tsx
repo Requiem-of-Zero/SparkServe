@@ -4,12 +4,12 @@ import { useRouter } from "next/navigation";
 
 import { authClient } from "@/lib/auth-client";
 
-export function LogoutButton() {
+export function LogoutButton({ redirectTo = "/login" }: { redirectTo?: string }) {
   const router = useRouter();
 
   async function handleLogout() {
     await authClient.signOut();
-    router.push("/login");
+    router.push(redirectTo);
     router.refresh();
   }
 

@@ -22,6 +22,7 @@ type EmployeePageProps = {
 
 export default async function EmployeesPage({ searchParams }: EmployeePageProps) {
   const params = await searchParams;
+  // The first owner is bootstrapped before normal owner-only protections exist.
   const ownerExists = Boolean(
     await prisma.employeeProfile.findFirst({ where: { role: "OWNER" } }),
   );
@@ -97,6 +98,7 @@ export default async function EmployeesPage({ searchParams }: EmployeePageProps)
 }
 
 function BootstrapOwnerScreen({ createdCode }: { createdCode?: string }) {
+  // First-run setup screen for a fresh restaurant database.
   return (
     <main className="min-h-screen bg-zinc-950 px-6 py-12 text-white">
       <section className="mx-auto max-w-md">
@@ -124,6 +126,11 @@ function BootstrapOwnerScreen({ createdCode }: { createdCode?: string }) {
 
         <form action={bootstrapOwnerAction} className="mt-8 space-y-4">
           <TextInput name="name" label="Owner name" required />
+          <TextInput
+            name="displayName"
+            label="Owner display name"
+            placeholder="Shown inside the POS"
+          />
           <TextInput name="email" label="Owner email" type="email" required />
           <TextInput
             name="password"
@@ -147,6 +154,7 @@ function BootstrapOwnerScreen({ createdCode }: { createdCode?: string }) {
 }
 
 function EmployeeForm() {
+  // Creates staff login credentials plus the employee profile/role record.
   return (
     <form
       action={createEmployeeAction}
@@ -155,6 +163,11 @@ function EmployeeForm() {
       <h2 className="text-xl font-semibold">New employee</h2>
       <div className="mt-5 space-y-4">
         <TextInput name="name" label="Name" required />
+        <TextInput
+          name="displayName"
+          label="Display name"
+          placeholder="Shown inside the POS"
+        />
         <TextInput name="email" label="Email" type="email" required />
         <TextInput name="password" label="Temporary password" type="password" required />
         <TextInput
@@ -187,13 +200,14 @@ function EmployeeTable({
 }: {
   employees: EmployeeWithUser[];
 }) {
+  // Owners can see private codes here because this is where they distribute them.
   return (
     <div className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900">
       <table className="w-full text-left text-sm">
         <thead className="bg-zinc-950 text-zinc-400">
           <tr>
             <th className="px-4 py-3">Code</th>
-            <th className="px-4 py-3">Name</th>
+            <th className="px-4 py-3">Employee</th>
             <th className="px-4 py-3">Role</th>
             <th className="px-4 py-3">Status</th>
             <th className="px-4 py-3">Hired</th>
@@ -202,9 +216,14 @@ function EmployeeTable({
         <tbody>
           {employees.map((employee) => (
             <tr key={employee.id} className="border-t border-zinc-800">
-              <td className="px-4 py-3 font-mono">{employee.user.username}</td>
+              <td className="px-4 py-3 font-mono">
+                {employee.loginCode ?? "Needs code"}
+              </td>
               <td className="px-4 py-3">
-                <div className="font-medium">{employee.user.name}</div>
+                <div className="font-medium">
+                  {employee.user.displayUsername ?? employee.user.name}
+                </div>
+                <div className="text-zinc-400">{employee.user.name}</div>
                 <div className="text-zinc-500">{employee.user.email}</div>
               </td>
               <td className="px-4 py-3">{employee.role}</td>
@@ -227,11 +246,13 @@ function TextInput({
   name,
   type = "text",
   required = false,
+  placeholder,
 }: {
   label: string;
   name: string;
   type?: string;
   required?: boolean;
+  placeholder?: string;
 }) {
   return (
     <label className="block">
@@ -240,6 +261,7 @@ function TextInput({
         name={name}
         type={type}
         required={required}
+        placeholder={placeholder}
         className="mt-2 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none focus:border-emerald-500"
       />
     </label>

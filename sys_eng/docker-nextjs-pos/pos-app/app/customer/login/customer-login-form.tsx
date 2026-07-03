@@ -3,7 +3,9 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
-export function LoginForm() {
+import { authClient } from "@/lib/auth-client";
+
+export function CustomerLoginForm() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -14,42 +16,36 @@ export function LoginForm() {
     setIsSubmitting(true);
 
     const formData = new FormData(event.currentTarget);
-    const employeeCode = String(formData.get("employeeCode") ?? "").trim();
+    const email = String(formData.get("email") ?? "").trim();
     const password = String(formData.get("password") ?? "");
 
-    const response = await fetch("/api/employee-login", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({ employeeCode, password }),
+    // Customer/member login uses regular email/password auth.
+    const result = await authClient.signIn.email({
+      email,
+      password,
+      callbackURL: "/customer/account",
     });
 
     setIsSubmitting(false);
 
-    if (!response.ok) {
-      const result = await response.json().catch(() => null);
-      setError(result?.error ?? "Login failed.");
+    if (result.error) {
+      setError(result.error.message ?? "Customer login failed.");
       return;
     }
 
-    router.push("/staff");
+    router.push("/customer/account");
     router.refresh();
   }
 
   return (
     <form onSubmit={handleSubmit} className="mt-8 space-y-4">
       <label className="block">
-        <span className="text-sm font-medium text-zinc-300">Employee code</span>
+        <span className="text-sm font-medium text-zinc-300">Email</span>
         <input
-          name="employeeCode"
-          inputMode="numeric"
-          pattern="[0-9]{6}"
-          maxLength={6}
-          minLength={6}
+          name="email"
+          type="email"
           required
           className="mt-2 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-white outline-none focus:border-emerald-500"
-          placeholder="123456"
         />
       </label>
 
