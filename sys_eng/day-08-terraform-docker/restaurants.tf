@@ -14,7 +14,8 @@ resource "local_file" "restaurant_compose" {
 }
 
 # Generates one POS app environment file per restaurant.
-resource "local_file" "restaurant_env" {
+# Sensitive keeps OAuth/client secrets out of Terraform plan output.
+resource "local_sensitive_file" "restaurant_env" {
   for_each = var.restaurants
 
   filename = "${path.module}/generated/restaurants/${each.key}/pos-app.env"
@@ -24,6 +25,11 @@ resource "local_file" "restaurant_env" {
 
   content = templatefile("${path.module}/templates/restaurant-env.tftpl", {
     restaurant = each.value
+    google = lookup(var.restaurant_google_oauth, each.key, {
+      enabled       = false
+      client_id     = ""
+      client_secret = ""
+    })
   })
 }
 
@@ -63,7 +69,7 @@ resource "null_resource" "push_restaurant_compose" {
 
   triggers = {
     compose_sha = local_file.restaurant_compose[each.key].content_sha256
-    env_sha     = local_file.restaurant_env[each.key].content_sha256
+    env_sha     = local_sensitive_file.restaurant_env[each.key].content_sha256
     nginx_sha   = local_file.restaurant_nginx[each.key].content_sha256
     agent_sha   = local_file.restaurant_prometheus_agent[each.key].content_sha256
   }
@@ -96,7 +102,7 @@ resource "null_resource" "push_restaurant_compose" {
 
   # Upload the generated app/database environment file.
   provisioner "file" {
-    source      = local_file.restaurant_env[each.key].filename
+    source      = local_sensitive_file.restaurant_env[each.key].filename
     destination = "${each.value.deploy_base_path}/${each.key}/pos-app/.env.production"
   }
 

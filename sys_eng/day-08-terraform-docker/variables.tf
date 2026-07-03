@@ -32,6 +32,19 @@ variable "restaurants" {
   }
 }
 
+# Per-restaurant customer OAuth credentials. Keep this in terraform.tfvars or
+# TF_VAR_restaurant_google_oauth because client secrets should not be committed.
+variable "restaurant_google_oauth" {
+  description = "Google OAuth settings keyed by restaurant slug."
+  type = map(object({
+    enabled       = bool
+    client_id     = string
+    client_secret = string
+  }))
+  sensitive = true
+  default   = {}
+}
+
 # Private key Terraform uses from the HQ machine when SSHing into restaurant hosts.
 variable "ssh_private_key_path" {
   description = "Private SSH key used by Terraform on the HQ machine to connect to restaurant hosts."
