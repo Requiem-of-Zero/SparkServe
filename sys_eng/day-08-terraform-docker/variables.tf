@@ -3,25 +3,31 @@
 variable "restaurants" {
   description = "Restaurant POS hosts managed by this platform. Each map key becomes the restaurant slug used for folders, containers, and generated files."
   type = map(object({
-    name             = string
-    host             = string
-    domain           = string
+    name   = string
+    host   = string
+    domain = string
+    # Public base URL Better Auth uses when creating redirects and session cookies.
+    app_url          = optional(string, "http://localhost:8080")
     ssh_user         = string
     deploy_base_path = string
     db_name          = string
     db_user          = string
     db_password      = string
+    # Per-restaurant auth secret. Override this in terraform.tfvars for real deployments.
+    better_auth_secret = optional(string, "change-me-to-a-32-character-secret")
   }))
   default = {
     big-fish-house = {
-      name             = "bfh-restaurant"
-      host             = "192.168.1.28"
-      domain           = "bfh-restaurant.samuelwong.xyz"
-      ssh_user         = "sungjinwong"
-      deploy_base_path = "/home/sungjinwong/samwo-platform/restaurants"
-      db_name          = "pos_db"
-      db_user          = "pos_user"
-      db_password      = "pos_password"
+      name               = "bfh-restaurant"
+      host               = "192.168.1.28"
+      domain             = "bfh-restaurant.samuelwong.xyz"
+      app_url            = "http://192.168.1.28:8080"
+      ssh_user           = "sungjinwong"
+      deploy_base_path   = "/home/sungjinwong/samwo-platform/restaurants"
+      db_name            = "pos_db"
+      db_user            = "pos_user"
+      db_password        = "pos_password"
+      better_auth_secret = "change-me-to-a-32-character-secret"
     }
   }
 }
