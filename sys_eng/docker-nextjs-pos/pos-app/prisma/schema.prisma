@@ -102,6 +102,7 @@ model RestaurantSettings {
 model EmployeeProfile {
   id         Int          @id @default(autoincrement())
   userId     String       @unique
+  loginCode  String?      @unique
   role       EmployeeRole @default(CASHIER)
   active     Boolean      @default(true)
   hiredAt    DateTime     @default(now())
