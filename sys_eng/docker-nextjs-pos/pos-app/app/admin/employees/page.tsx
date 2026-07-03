@@ -3,6 +3,8 @@ import Link from "next/link";
 import {
   bootstrapOwnerAction,
   createEmployeeAction,
+  rotateAllEmployeeCodesAction,
+  rotateSelectedEmployeeCodesAction,
 } from "@/app/admin/employees/actions";
 import { LogoutButton } from "@/app/components/logout-button";
 import { getCurrentEmployee } from "@/lib/employee-auth";
@@ -17,6 +19,7 @@ type EmployeePageProps = {
   searchParams?: Promise<{
     created?: string;
     role?: string;
+    rotated?: string;
   }>;
 };
 
@@ -84,6 +87,15 @@ export default async function EmployeesPage({ searchParams }: EmployeePageProps)
             </p>
             <p className="mt-1 text-3xl font-bold tracking-widest">
               {params.created}
+            </p>
+          </div>
+        ) : null}
+
+        {params?.rotated ? (
+          <div className="mt-6 rounded-lg border border-amber-800 bg-amber-950 p-4">
+            <p className="text-sm text-amber-200">
+              Refreshed {params.rotated} employee code
+              {params.rotated === "1" ? "" : "s"}.
             </p>
           </div>
         ) : null}
@@ -203,40 +215,71 @@ function EmployeeTable({
   // Owners can see private codes here because this is where they distribute them.
   return (
     <div className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900">
-      <table className="w-full text-left text-sm">
-        <thead className="bg-zinc-950 text-zinc-400">
-          <tr>
-            <th className="px-4 py-3">Code</th>
-            <th className="px-4 py-3">Employee</th>
-            <th className="px-4 py-3">Role</th>
-            <th className="px-4 py-3">Status</th>
-            <th className="px-4 py-3">Hired</th>
-          </tr>
-        </thead>
-        <tbody>
-          {employees.map((employee) => (
-            <tr key={employee.id} className="border-t border-zinc-800">
-              <td className="px-4 py-3 font-mono">
-                {employee.loginCode ?? "Needs code"}
-              </td>
-              <td className="px-4 py-3">
-                <div className="font-medium">
-                  {employee.user.displayUsername ?? employee.user.name}
-                </div>
-                <div className="text-zinc-400">{employee.user.name}</div>
-                <div className="text-zinc-500">{employee.user.email}</div>
-              </td>
-              <td className="px-4 py-3">{employee.role}</td>
-              <td className="px-4 py-3">
-                {employee.active && !employee.resignedAt ? "Active" : "Inactive"}
-              </td>
-              <td className="px-4 py-3">
-                {employee.hiredAt.toLocaleDateString()}
-              </td>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 bg-zinc-950 px-4 py-3">
+        <div>
+          <h2 className="font-semibold">Existing employees</h2>
+          <p className="text-sm text-zinc-500">
+            Select staff when a private login code needs to be rotated.
+          </p>
+        </div>
+        <form action={rotateAllEmployeeCodesAction}>
+          <button className="rounded-md border border-amber-700 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-950">
+            Refresh all codes
+          </button>
+        </form>
+      </div>
+
+      <form action={rotateSelectedEmployeeCodesAction}>
+        <table className="w-full text-left text-sm">
+          <thead className="bg-zinc-950 text-zinc-400">
+            <tr>
+              <th className="px-4 py-3">Select</th>
+              <th className="px-4 py-3">Code</th>
+              <th className="px-4 py-3">Employee</th>
+              <th className="px-4 py-3">Role</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Hired</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {employees.map((employee) => (
+              <tr key={employee.id} className="border-t border-zinc-800">
+                <td className="px-4 py-3">
+                  <input
+                    name="employeeIds"
+                    type="checkbox"
+                    value={employee.id}
+                    className="h-4 w-4 accent-amber-500"
+                  />
+                </td>
+                <td className="px-4 py-3 font-mono">
+                  {employee.loginCode ?? "Needs code"}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="font-medium">
+                    {employee.user.displayUsername ?? employee.user.name}
+                  </div>
+                  <div className="text-zinc-400">{employee.user.name}</div>
+                  <div className="text-zinc-500">{employee.user.email}</div>
+                </td>
+                <td className="px-4 py-3">{employee.role}</td>
+                <td className="px-4 py-3">
+                  {employee.active && !employee.resignedAt ? "Active" : "Inactive"}
+                </td>
+                <td className="px-4 py-3">
+                  {employee.hiredAt.toLocaleDateString()}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div className="border-t border-zinc-800 px-4 py-3">
+          <button className="rounded-md bg-amber-500 px-3 py-2 text-sm font-semibold text-zinc-950 hover:bg-amber-400">
+            Refresh selected codes
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
