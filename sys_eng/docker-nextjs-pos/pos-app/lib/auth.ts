@@ -5,6 +5,11 @@ import { username } from "better-auth/plugins";
 
 import { prisma } from "@/lib/prisma";
 
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+const appleClientId = process.env.APPLE_CLIENT_ID;
+const appleClientSecret = process.env.APPLE_CLIENT_SECRET;
+
 // Server-side auth configuration for employee login and sessions.
 export const auth = betterAuth({
   // Store Better Auth users, sessions, accounts, and verification rows in Postgres.
@@ -19,16 +24,48 @@ export const auth = betterAuth({
     autoSignIn: false,
   },
 
-  // Username is our owner-distributed 6-digit employee login code.
-  // The employee still uses a password, which Better Auth stores as a hash.
+  // Links trusted OAuth logins to an existing user with the same email.
+  // Example: a customer signs up with password, then later uses Google with that email.
+  account: {
+    accountLinking: {
+      enabled: true,
+      trustedProviders: ["google"],
+      requireLocalEmailVerified: false,
+      updateUserInfoOnLink: true,
+    },
+  },
+
+  // Customer OAuth providers. They are enabled only when env credentials exist.
+  socialProviders: {
+    ...(googleClientId && googleClientSecret
+      ? {
+          google: {
+            clientId: googleClientId,
+            clientSecret: googleClientSecret,
+          },
+        }
+      : {}),
+    ...(appleClientId && appleClientSecret
+      ? {
+          apple: {
+            clientId: appleClientId,
+            clientSecret: appleClientSecret,
+          },
+        }
+      : {}),
+  },
+
+  // Optional public username support for customer/community features.
+  // Private employee login codes live on EmployeeProfile.loginCode instead.
   plugins: [
     username({
-      minUsernameLength: 6,
-      maxUsernameLength: 6,
-      usernameValidator: (value) => /^\d{6}$/.test(value),
-      displayUsernameValidator: (value) => /^\d{6}$/.test(value),
+      minUsernameLength: 3,
+      maxUsernameLength: 25,
+      usernameValidator: (value) => /^[a-zA-Z0-9_][a-zA-Z0-9_.-]{2,24}$/.test(value),
+      displayUsernameValidator: (value) =>
+        value.trim().length >= 2 && value.trim().length <= 40,
       usernameNormalization: false,
-      displayUsernameNormalization: false,
+      displayUsernameNormalization: (value) => value.trim(),
     }),
     nextCookies(),
   ],
