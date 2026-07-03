@@ -2,6 +2,9 @@ NODE_ENV=production
 PORT=3000
 NEXT_PUBLIC_APP_NAME="${restaurant.name}"
 NEXT_PUBLIC_DEPLOYMENT_ENV=homelab
+# Better Auth needs the app URL for callbacks/cookies and a high-entropy secret for signing.
+BETTER_AUTH_URL=${restaurant.app_url}
+BETTER_AUTH_SECRET=${restaurant.better_auth_secret}
 DATABASE_URL=postgresql://${restaurant.db_user}:${restaurant.db_password}@postgres:5432/${restaurant.db_name}
 POSTGRES_USER=${restaurant.db_user}
 POSTGRES_PASSWORD=${restaurant.db_password}
