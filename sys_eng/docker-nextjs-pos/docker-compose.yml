@@ -23,6 +23,11 @@ services:
       args:
         NEXT_PUBLIC_APP_NAME: Restaurant POS Homelab
         NEXT_PUBLIC_DEPLOYMENT_ENV: docker-compose
+        # Build-time placeholders let Next.js import auth/Prisma routes during compilation.
+        # Runtime values still come from ./pos-app/.env.production.
+        DATABASE_URL: postgresql://pos_user:pos_password@postgres:5432/pos_db
+        BETTER_AUTH_URL: http://localhost:8080
+        BETTER_AUTH_SECRET: build-time-placeholder-secret-32-chars
     container_name: pos-app
     env_file:
       - ./pos-app/.env.production
@@ -36,6 +41,10 @@ services:
 
   postgres:
     image: postgres:17
+    # Expose Postgres on the host for local Next.js development with yarn dev.
+    # Use 5433 to avoid colliding with any system Postgres on 5432.
+    ports:
+      - "127.0.0.1:5433:5432"
     # Initialize database creds on first startup
     environment:
       POSTGRES_USER: pos_user
