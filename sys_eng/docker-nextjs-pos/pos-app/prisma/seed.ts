@@ -73,18 +73,19 @@ async function createDemoAuthUser({
   });
 
   if (existingUser) {
-    const user =
-      username &&
-      (existingUser.username !== username ||
-        existingUser.displayUsername !== displayUsername)
-        ? await prisma.user.update({
-            where: { id: existingUser.id },
-            data: {
-              username,
-              displayUsername,
-            },
-          })
-        : existingUser;
+    const nextUsername = username ?? null;
+    const shouldUpdateUser =
+      existingUser.username !== nextUsername ||
+      existingUser.displayUsername !== displayUsername;
+    const user = shouldUpdateUser
+      ? await prisma.user.update({
+          where: { id: existingUser.id },
+          data: {
+            username: nextUsername,
+            displayUsername,
+          },
+        })
+      : existingUser;
 
     await resetDemoPassword(user.id);
 
@@ -117,19 +118,20 @@ async function seedDemoUsers() {
   const owner = await createDemoAuthUser({
     name: "Demo Owner",
     email: "test@example.com",
-    username: "111111",
     displayUsername: "Owner",
   });
 
   await prisma.employeeProfile.upsert({
     where: { userId: owner.id },
     update: {
+      loginCode: "111111",
       role: EmployeeRole.OWNER,
       active: true,
       resignedAt: null,
     },
     create: {
       userId: owner.id,
+      loginCode: "111111",
       role: EmployeeRole.OWNER,
     },
   });
@@ -137,19 +139,20 @@ async function seedDemoUsers() {
   const cashier = await createDemoAuthUser({
     name: "Demo Cashier",
     email: "cashier@example.com",
-    username: "222222",
     displayUsername: "Cashier",
   });
 
   await prisma.employeeProfile.upsert({
     where: { userId: cashier.id },
     update: {
+      loginCode: "222222",
       role: EmployeeRole.CASHIER,
       active: true,
       resignedAt: null,
     },
     create: {
       userId: cashier.id,
+      loginCode: "222222",
       role: EmployeeRole.CASHIER,
     },
   });
