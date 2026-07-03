@@ -25,6 +25,7 @@ model User {
   sessions        Session[]
   accounts        Account[]
   employeeProfile EmployeeProfile?
+  customerProfile CustomerProfile?
 
   @@unique([email])
   @@unique([username])
@@ -108,6 +109,18 @@ model EmployeeProfile {
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
   user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CustomerProfile {
+  id                   Int      @id @default(autoincrement())
+  userId               String   @unique
+  displayName          String?
+  phone                String?
+  marketingOptIn       Boolean  @default(false)
+  loyaltyPointsBalance Int      @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model MenuItem {
