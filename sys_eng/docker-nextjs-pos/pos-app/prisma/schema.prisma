@@ -12,6 +12,73 @@ datasource db {
   provider = "postgresql"
 }
 
+model User {
+  id              String           @id
+  name            String
+  email           String
+  emailVerified   Boolean          @default(false)
+  image           String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  username        String?
+  displayUsername String?
+  sessions        Session[]
+  accounts        Account[]
+  employeeProfile EmployeeProfile?
+
+  @@unique([email])
+  @@unique([username])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
 model RestaurantSettings {
   id               Int      @id @default(1)
   name             String
@@ -32,12 +99,15 @@ model RestaurantSettings {
 }
 
 model EmployeeProfile {
-  userId    Int
-  id        Int          @id @default(autoincrement())
-  role      EmployeeRole @default(CASHIER)
-  active    Boolean      @default(true)
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  id         Int          @id @default(autoincrement())
+  userId     String       @unique
+  role       EmployeeRole @default(CASHIER)
+  active     Boolean      @default(true)
+  hiredAt    DateTime     @default(now())
+  resignedAt DateTime?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model MenuItem {
