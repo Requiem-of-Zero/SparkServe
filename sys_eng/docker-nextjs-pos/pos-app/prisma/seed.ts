@@ -1,5 +1,10 @@
+import "dotenv/config";
+
 import { PrismaPg } from "@prisma/adapter-pg";
+import { hashPassword } from "better-auth/crypto";
+import { auth } from "../lib/auth";
 import { PrismaClient } from "../lib/generated/prisma/client";
+import { EmployeeRole } from "../lib/generated/prisma/enums";
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -10,6 +15,170 @@ if (!connectionString) {
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString }),
 });
+
+const demoPassword = "abc12345";
+
+async function resetDemoPassword(userId: string) {
+  const passwordHash = await hashPassword(demoPassword);
+
+  await prisma.account.deleteMany({
+    where: {
+      userId,
+      providerId: "credential",
+      id: {
+        startsWith: "demo-credential-",
+      },
+    },
+  });
+
+  const result = await prisma.account.updateMany({
+    where: {
+      userId,
+      providerId: "credential",
+    },
+    data: {
+      password: passwordHash,
+      updatedAt: new Date(),
+    },
+  });
+
+  if (result.count > 0) {
+    return;
+  }
+
+  await prisma.account.create({
+    data: {
+      id: `demo-credential-${userId}`,
+      accountId: userId,
+      providerId: "credential",
+      userId,
+      password: passwordHash,
+    },
+  });
+}
+
+async function createDemoAuthUser({
+  name,
+  email,
+  username,
+  displayUsername,
+}: {
+  name: string;
+  email: string;
+  username?: string;
+  displayUsername?: string;
+}) {
+  const existingUser = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (existingUser) {
+    const user =
+      username &&
+      (existingUser.username !== username ||
+        existingUser.displayUsername !== displayUsername)
+        ? await prisma.user.update({
+            where: { id: existingUser.id },
+            data: {
+              username,
+              displayUsername,
+            },
+          })
+        : existingUser;
+
+    await resetDemoPassword(user.id);
+
+    return user;
+  }
+
+  const result = await auth.api.signUpEmail({
+    body: {
+      name,
+      email,
+      password: demoPassword,
+      ...(username
+        ? {
+            username,
+            displayUsername: displayUsername ?? name,
+          }
+        : {}),
+    },
+    headers: new Headers({
+      origin: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
+    }),
+  });
+
+  await resetDemoPassword(result.user.id);
+
+  return result.user;
+}
+
+async function seedDemoUsers() {
+  const owner = await createDemoAuthUser({
+    name: "Demo Owner",
+    email: "test@example.com",
+    username: "111111",
+    displayUsername: "Owner",
+  });
+
+  await prisma.employeeProfile.upsert({
+    where: { userId: owner.id },
+    update: {
+      role: EmployeeRole.OWNER,
+      active: true,
+      resignedAt: null,
+    },
+    create: {
+      userId: owner.id,
+      role: EmployeeRole.OWNER,
+    },
+  });
+
+  const cashier = await createDemoAuthUser({
+    name: "Demo Cashier",
+    email: "cashier@example.com",
+    username: "222222",
+    displayUsername: "Cashier",
+  });
+
+  await prisma.employeeProfile.upsert({
+    where: { userId: cashier.id },
+    update: {
+      role: EmployeeRole.CASHIER,
+      active: true,
+      resignedAt: null,
+    },
+    create: {
+      userId: cashier.id,
+      role: EmployeeRole.CASHIER,
+    },
+  });
+
+  const customer = await createDemoAuthUser({
+    name: "Demo Customer",
+    email: "customer@example.com",
+  });
+
+  await prisma.customerProfile.upsert({
+    where: { userId: customer.id },
+    update: {
+      displayName: "Demo Customer",
+      marketingOptIn: true,
+    },
+    create: {
+      userId: customer.id,
+      displayName: "Demo Customer",
+      marketingOptIn: true,
+      loyaltyPointsBalance: 120,
+    },
+  });
+
+  return {
+    owner: { email: "test@example.com", employeeCode: "111111" },
+    cashier: { email: "cashier@example.com", employeeCode: "222222" },
+    customer: { email: "customer@example.com" },
+  };
+}
 
 async function main() {
   await prisma.restaurantSettings.upsert({
@@ -39,60 +208,88 @@ async function main() {
     skipDuplicates: true,
   });
 
-  const noodleSoup = await prisma.menuItem.create({
-    data: {
+  const noodleSoup = await prisma.menuItem.upsert({
+    where: { id: 1 },
+    update: {
       priceCents: 1399,
       categoryKey: "noodles",
       sortOrder: 10,
-      translations: {
-        create: [
-          {
-            locale: "en",
-            name: "Beef Noodle Soup",
-            description: "Slow-braised beef with noodles in a rich broth.",
-            ingredients: "Beef, wheat noodles, broth, scallions",
-            category: "Noodles",
-          },
-          {
-            locale: "es",
-            name: "Sopa de Fideos con Res",
-            description: "Res cocida lentamente con fideos en caldo.",
-            ingredients: "Res, fideos de trigo, caldo, cebollín",
-            category: "Fideos",
-          },
-        ],
-      },
+      active: true,
+    },
+    create: {
+      id: 1,
+      priceCents: 1399,
+      categoryKey: "noodles",
+      sortOrder: 10,
     },
   });
 
-  const milkTea = await prisma.menuItem.create({
-    data: {
+  await prisma.menuItemTranslation.createMany({
+    data: [
+      {
+        menuItemId: noodleSoup.id,
+        locale: "en",
+        name: "Beef Noodle Soup",
+        description: "Slow-braised beef with noodles in a rich broth.",
+        ingredients: "Beef, wheat noodles, broth, scallions",
+        category: "Noodles",
+      },
+      {
+        menuItemId: noodleSoup.id,
+        locale: "es",
+        name: "Sopa de Fideos con Res",
+        description: "Res cocida lentamente con fideos en caldo.",
+        ingredients: "Res, fideos de trigo, caldo, cebollín",
+        category: "Fideos",
+      },
+    ],
+    skipDuplicates: true,
+  });
+
+  const milkTea = await prisma.menuItem.upsert({
+    where: { id: 2 },
+    update: {
       priceCents: 499,
       categoryKey: "drinks",
       sortOrder: 20,
-      translations: {
-        create: [
-          {
-            locale: "en",
-            name: "Milk Tea",
-            description: "Classic sweet milk tea served cold.",
-            ingredients: "Black tea, milk, sugar",
-            category: "Drinks",
-          },
-          {
-            locale: "es",
-            name: "Té con Leche",
-            description: "Té dulce clásico con leche, servido frío.",
-            ingredients: "Té negro, leche, azúcar",
-            category: "Bebidas",
-          },
-        ],
-      },
+      active: true,
+    },
+    create: {
+      id: 2,
+      priceCents: 499,
+      categoryKey: "drinks",
+      sortOrder: 20,
     },
   });
 
-  console.log("Seeded restaurant settings, tables, and menu items:", {
+  await prisma.menuItemTranslation.createMany({
+    data: [
+      {
+        menuItemId: milkTea.id,
+        locale: "en",
+        name: "Milk Tea",
+        description: "Classic sweet milk tea served cold.",
+        ingredients: "Black tea, milk, sugar",
+        category: "Drinks",
+      },
+      {
+        menuItemId: milkTea.id,
+        locale: "es",
+        name: "Té con Leche",
+        description: "Té dulce clásico con leche, servido frío.",
+        ingredients: "Té negro, leche, azúcar",
+        category: "Bebidas",
+      },
+    ],
+    skipDuplicates: true,
+  });
+
+  const demoUsers = await seedDemoUsers();
+
+  console.log("Seeded demo data:", {
     menuItems: [noodleSoup.id, milkTea.id],
+    demoUsers,
+    password: demoPassword,
   });
 }
 
