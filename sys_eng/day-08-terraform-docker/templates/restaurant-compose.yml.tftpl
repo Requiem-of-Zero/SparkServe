@@ -13,6 +13,9 @@ services:
   pos-app:
     build:
       context: ./pos-app
+      args:
+        NEXT_PUBLIC_APP_NAME: "${restaurant.name}"
+        NEXT_PUBLIC_DEPLOYMENT_ENV: "homelab"
     image: ${restaurant_key}-pos-app:local
     container_name: ${restaurant_key}-pos-app
     env_file:
