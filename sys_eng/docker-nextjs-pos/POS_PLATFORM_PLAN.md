@@ -26,11 +26,18 @@ The same app code can be deployed to many restaurants, but each restaurant owns 
 Use clear business language:
 
 - `Employee`: staff member who logs into the POS.
+- `Customer`: optional permanent customer/member account.
 - `CustomerSession`: temporary QR/table session for guests.
 - `DiningTable`: physical table with its own QR code.
 - `Order`: active or completed order for a table session.
 
-Do not treat QR customers as permanent users at first. They are temporary table sessions.
+Do not require QR customers to be permanent users at first. They are temporary table sessions by default.
+
+Later, customers can optionally sign up or log in through the customer portal to become members. A member account should be separate from staff authorization:
+
+- customer/member accounts can view order history and loyalty points
+- employee accounts can access POS/admin tools through `EmployeeProfile`
+- customers should never get an `EmployeeProfile`
 
 Employee login is also the foundation for accountability. Any sensitive staff action should eventually be tied to an employee account, especially when cash handling is added.
 
@@ -69,6 +76,7 @@ Initial models:
 ```text
 RestaurantSettings
 EmployeeProfile
+CustomerProfile
 AuditEvent
 MenuItem
 MenuItemTranslation
@@ -77,6 +85,9 @@ CustomerSession
 Order
 OrderItem
 Payment
+LoyaltyProgram
+LoyaltyLedger
+LoyaltyReward
 ```
 
 Better Auth will manage its own auth tables for users and sessions. The app should add employee-specific business data through `EmployeeProfile`.
@@ -111,6 +122,62 @@ REFUND_CREATED
 EMPLOYEE_CREATED
 MENU_PRICE_CHANGED
 TABLE_CHECKED_OUT
+```
+
+`CustomerProfile` should store customer/member-specific business data:
+
+```text
+auth user id
+displayName
+phone
+marketingOptIn
+loyaltyPointsBalance
+createdAt
+updatedAt
+```
+
+`LoyaltyProgram` should store restaurant-controlled earning rules:
+
+```text
+enabled
+pointsPerDollar
+minimumSpendCents
+roundingMode
+createdAt
+updatedAt
+```
+
+`LoyaltyLedger` should store every points movement instead of only overwriting a balance:
+
+```text
+customerProfileId
+orderId
+points
+reason
+metadata
+createdAt
+```
+
+Example reasons:
+
+```text
+ORDER_EARNED
+REWARD_REDEEMED
+OWNER_ADJUSTMENT
+POINTS_EXPIRED
+```
+
+`LoyaltyReward` should store menu rewards controlled by the owner or manager:
+
+```text
+menuItemId
+pointsCost
+active
+startsAt
+endsAt
+redemptionLimit
+createdAt
+updatedAt
 ```
 
 ## Theming
@@ -177,6 +244,45 @@ Example customer URLs:
 Keep translation data in the restaurant database so each restaurant can customize menu names and descriptions.
 
 Do not use machine translation as the source of truth. It can be a future helper, but owners should be able to review/edit customer-visible text.
+
+## Customer Membership And Loyalty
+
+Customer accounts should be optional. A guest should still be able to scan a QR code and order without creating an account, but a customer who signs in can become a member.
+
+Member features:
+
+- sign up and log in through the customer portal
+- view loyalty points balance
+- view available rewards
+- optionally view order history
+- attach a table order to their member account before checkout
+
+Owner/manager controls:
+
+- enable or disable the loyalty program
+- set points earned per dollar spent
+- set minimum spend rules
+- choose whether points round down, round nearest, or use exact cents
+- choose which menu items can be redeemed as rewards
+- set points cost per reward item
+- manually adjust customer points when needed
+
+The app should use a ledger model for points. Do not only store a mutable balance with no history. The balance is useful for display, but the ledger explains why it changed.
+
+Example flow:
+
+```text
+customer signs in
+customer places order
+order is paid
+system calculates points from LoyaltyProgram
+LoyaltyLedger records ORDER_EARNED
+CustomerProfile balance updates
+customer later redeems reward item
+LoyaltyLedger records REWARD_REDEEMED
+```
+
+Reward redemption should be validated server-side. A customer should not be able to unlock a reward item just by changing client-side code.
 
 ## Build Order
 
@@ -312,7 +418,27 @@ Done when:
 
 - A full table visit can start, order, and close.
 
-### 8. Backups
+### 8. Customer Membership And Loyalty
+
+Build optional customer accounts and rewards.
+
+Focus:
+
+- Customer can sign up and log in through the customer portal.
+- Customer can attach their account to a table/order session.
+- Owner/manager can configure points earned per dollar spent.
+- Owner/manager can mark selected menu items as loyalty rewards.
+- Customer can view points balance and available rewards.
+- Paid orders can earn points.
+- Reward redemptions subtract points through a ledger entry.
+
+Done when:
+
+- A customer can earn points from a paid order.
+- A customer can redeem points for an owner-selected reward item.
+- Owner/manager can alter the loyalty conversion rule without code changes.
+
+### 9. Backups
 
 Protect restaurant data.
 
@@ -327,7 +453,7 @@ Done when:
 
 - A restaurant database can be backed up and restored safely.
 
-### 9. Monitoring And Hardening
+### 10. Monitoring And Hardening
 
 Improve operations after core app works.
 
