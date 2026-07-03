@@ -19,12 +19,18 @@ COPY . .
 # Pass build-time environment variables to Next.js
 ARG NEXT_PUBLIC_APP_NAME
 ARG NEXT_PUBLIC_DEPLOYMENT_ENV
+ARG DATABASE_URL=postgresql://pos_user:pos_password@postgres:5432/pos_db
+ARG BETTER_AUTH_URL=http://localhost:3000
+ARG BETTER_AUTH_SECRET=build-time-placeholder-secret-32-chars
 
 ENV NEXT_PUBLIC_APP_NAME=$NEXT_PUBLIC_APP_NAME
 ENV NEXT_PUBLIC_DEPLOYMENT_ENV=$NEXT_PUBLIC_DEPLOYMENT_ENV
 
 # Build the Next.js production application
-RUN yarn build
+RUN DATABASE_URL=$DATABASE_URL \
+    BETTER_AUTH_URL=$BETTER_AUTH_URL \
+    BETTER_AUTH_SECRET=$BETTER_AUTH_SECRET \
+    yarn build
 
 # This container listens on port 3000
 # Does not publish the port
