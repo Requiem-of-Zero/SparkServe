@@ -1,0 +1,55 @@
+model DiningTable {
+  id        Int      @id @default(autoincrement())
+  row       String
+  col       Int
+  label     String?
+  seats     Int      @default(4)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions TableSession[]
+
+  @@unique([row, col])
+}
+
+model TableSession {
+  id          Int                @id @default(autoincrement())
+  tableId     Int
+  publicToken String             @unique
+  status      TableSessionStatus @default(OPEN)
+  openedAt    DateTime           @default(now())
+  submittedAt DateTime?
+  closedAt    DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  table DiningTable        @relation(fields: [tableId], references: [id])
+  items TableSessionItem[]
+
+  @@index([tableId])
+  @@index([status])
+}
+
+model TableSessionItem {
+  id             Int      @id @default(autoincrement())
+  tableSessionId Int
+  menuItemId     Int
+  quantity       Int      @default(1)
+  note           String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tableSession TableSession @relation(fields: [tableSessionId], references: [id], onDelete: Cascade)
+  menuItem     MenuItem     @relation(fields: [menuItemId], references: [id])
+
+  @@index([tableSessionId])
+  @@index([menuItemId])
+}
+
+enum TableSessionStatus {
+  OPEN
+  SUBMITTED
+  CHECKED_OUT
+  CANCELLED
+}
