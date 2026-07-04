@@ -203,10 +203,14 @@ async function main() {
 
   await prisma.diningTable.createMany({
     data: [
-      { row: "A", col: 0, label: "Window Table", seats: 4 },
-      { row: "A", col: 1, seats: 2 },
-      { row: "B", col: 0, seats: 4 },
-      { row: "B", col: 1, seats: 6 },
+      { row: "A", col: 0, label: "A0 Window", seats: 4 },
+      { row: "A", col: 1, label: "A1 Window", seats: 2 },
+      { row: "A", col: 2, label: "A2 Window", seats: 4 },
+      { row: "B", col: 0, label: "B0 Center", seats: 4 },
+      { row: "B", col: 1, label: "B1 Center", seats: 6 },
+      { row: "B", col: 2, label: "B2 Center", seats: 4 },
+      { row: "C", col: 0, label: "C0 Booth", seats: 4 },
+      { row: "C", col: 1, label: "C1 Booth", seats: 6 },
     ],
     skipDuplicates: true,
   });
