@@ -1,0 +1,25 @@
+model MenuItem {
+  id          Int      @id @default(autoincrement())
+  priceCents  Int
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  categoryKey String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  translations MenuItemTranslation[]
+}
+
+model MenuItemTranslation {
+  id          Int     @id @default(autoincrement())
+  menuItemId  Int
+  locale      String
+  name        String
+  description String?
+  ingredients String?
+  category    String?
+
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+
+  @@unique([menuItemId, locale])
+}
