@@ -1,6 +1,7 @@
 import { getTableSessionByToken } from "@/lib/table-sessions";
 import { prisma } from "@/lib/prisma";
 import { addTableSessionItemAction } from "./actions";
+import { TableLiveClient } from "./table-live-client";
 
 type TableSessionPageProps = {
   params: Promise<{
@@ -39,7 +40,7 @@ export default async function TableSessionPage({
         </h1>
 
         <p className="mt-2 text-zinc-400">Session status: {session.status}</p>
-
+        <TableLiveClient token={token} />
         <div className="mt-8 rounded-lg border border-zinc-800 bg-zinc-900 p-5">
           <h2 className="text-xl font-semibold">Shared cart</h2>
 
