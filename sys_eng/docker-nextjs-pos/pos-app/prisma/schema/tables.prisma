@@ -27,8 +27,7 @@ model TableSession {
   table DiningTable        @relation(fields: [tableId], references: [id])
   items TableSessionItem[]
 
-  @@index([tableId])
-  @@index([status])
+  @@index([tableId, status])
 }
 
 model TableSessionItem {
