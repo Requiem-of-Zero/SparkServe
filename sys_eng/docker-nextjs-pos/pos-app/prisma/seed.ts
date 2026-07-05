@@ -4,7 +4,10 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { hashPassword } from "better-auth/crypto";
 import { auth } from "../lib/auth";
 import { PrismaClient } from "../lib/generated/prisma/client";
-import { EmployeeRole } from "../lib/generated/prisma/enums";
+import {
+  EmployeeRole,
+  TableSessionStatus,
+} from "../lib/generated/prisma/enums";
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -183,6 +186,52 @@ async function seedDemoUsers() {
   };
 }
 
+function demoTableToken(row: string, col: number) {
+  const tableKey = `${row.toLowerCase()}${col}`;
+  const tokenByTable: Record<string, string> = {
+    a0: "dev-a0-Qw7n2F9kLx4pRt6VzB1s",
+    a1: "dev-a1-Mp8c3YqN5sTz7Lw2Hd9r",
+    a2: "dev-a2-Vb6j1KxR8mQp4Ns7Ty3c",
+    b0: "dev-b0-Hr5t9WdL2qZx6Cb1Mn8p",
+    b1: "dev-b1-Xn3v7PaK9rLs2Qw6Yt4d",
+    b2: "dev-b2-Tc4m8NzP1yVq5Jk7Rb2s",
+    c0: "dev-c0-Lw9p2QrX6nBm3Tv8Kz5j",
+    c1: "dev-c1-Zk1r5VyM8qNp4Ls7Wb3t",
+  };
+
+  return tokenByTable[tableKey] ?? `dev-${tableKey}`;
+}
+
+async function seedDemoTableSessions() {
+  const tables = await prisma.diningTable.findMany({
+    orderBy: [{ row: "asc" }, { col: "asc" }],
+  });
+
+  for (const table of tables) {
+    await prisma.tableSession.upsert({
+      where: {
+        publicToken: demoTableToken(table.row, table.col),
+      },
+      update: {
+        tableId: table.id,
+        status: TableSessionStatus.OPEN,
+        submittedAt: null,
+        closedAt: null,
+      },
+      create: {
+        tableId: table.id,
+        publicToken: demoTableToken(table.row, table.col),
+        status: TableSessionStatus.OPEN,
+      },
+    });
+  }
+
+  return tables.map((table) => ({
+    label: table.label ?? `${table.row}${table.col}`,
+    token: demoTableToken(table.row, table.col),
+  }));
+}
+
 async function main() {
   await prisma.restaurantSettings.upsert({
     where: { id: 1 },
@@ -292,9 +341,11 @@ async function main() {
   });
 
   const demoUsers = await seedDemoUsers();
+  const demoTableSessions = await seedDemoTableSessions();
 
   console.log("Seeded demo data:", {
     menuItems: [noodleSoup.id, milkTea.id],
+    demoTableSessions,
     demoUsers,
     password: demoPassword,
   });
