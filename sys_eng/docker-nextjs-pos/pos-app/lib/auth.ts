@@ -9,9 +9,37 @@ const googleClientId = process.env.GOOGLE_CLIENT_ID;
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
 const appleClientId = process.env.APPLE_CLIENT_ID;
 const appleClientSecret = process.env.APPLE_CLIENT_SECRET;
+const trustedOrigins = process.env.BETTER_AUTH_TRUSTED_ORIGINS?.split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const fallbackAuthUrl = process.env.BETTER_AUTH_URL ?? "http://localhost:3000";
+const allowedAuthHosts = Array.from(
+  new Set(
+    [fallbackAuthUrl, ...(trustedOrigins ?? [])].map((origin) => {
+      try {
+        return new URL(origin).host;
+      } catch {
+        return origin;
+      }
+    }),
+  ),
+);
+const authProtocol = fallbackAuthUrl.startsWith("https://") ? "https" : "http";
 
 // Server-side auth configuration for employee login and sessions.
 export const auth = betterAuth({
+  // OAuth state cookies must be created and read on the same host.
+  // Dynamic baseURL lets localhost and LAN testing both work.
+  baseURL: {
+    allowedHosts: allowedAuthHosts,
+    fallback: fallbackAuthUrl,
+    protocol: authProtocol,
+  },
+
+  // Better Auth rejects browser origins that are not explicitly trusted.
+  // This lets local dev work from both localhost and LAN URLs.
+  trustedOrigins,
+
   // Store Better Auth users, sessions, accounts, and verification rows in Postgres.
   database: prismaAdapter(prisma, {
     provider: "postgresql",
