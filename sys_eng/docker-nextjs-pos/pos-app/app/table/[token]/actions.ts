@@ -8,6 +8,7 @@ import {
   TableSessionParticipantRole,
 } from "@/lib/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
+import { canParticipantRespondToOwnershipTransfer } from "@/lib/table-ownership-transfer";
 import {
   canParticipantRequestOwnerVerification,
   isSixDigitVerificationCode,
@@ -204,8 +205,11 @@ export async function respondToOwnershipTransferAction(
     if (
       !transfer ||
       transfer.tableSessionId !== session.id ||
-      transfer.targetParticipantId !== participant.id ||
-      transfer.status !== OwnershipTransferStatus.PENDING
+      !canParticipantRespondToOwnershipTransfer({
+        transferTargetParticipantId: transfer.targetParticipantId,
+        participantId: participant.id,
+        transferStatus: transfer.status,
+      })
     ) {
       throw new Error("Ownership transfer request is no longer available.");
     }
@@ -238,7 +242,13 @@ export async function respondToOwnershipTransferAction(
       }),
       prisma.tableSessionParticipant.update({
         where: { id: participant.id },
-        data: { role: TableSessionParticipantRole.OWNER },
+        data: {
+          role: TableSessionParticipantRole.OWNER,
+          phoneNumber: null,
+          phoneVerificationCodeHash: null,
+          phoneVerificationExpiresAt: null,
+          phoneVerifiedAt: null,
+        },
       }),
       prisma.tableSessionOwnershipTransfer.update({
         where: { id: transfer.id },

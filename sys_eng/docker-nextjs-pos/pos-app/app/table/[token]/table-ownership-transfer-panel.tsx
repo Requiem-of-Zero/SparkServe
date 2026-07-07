@@ -8,6 +8,10 @@ import {
   respondToOwnershipTransferAction,
   type OwnershipTransferState,
 } from "./actions";
+import {
+  getOwnershipTransferOptions,
+  getPendingOwnershipTransferForParticipant,
+} from "@/lib/table-ownership-transfer";
 import { useTableIdentity } from "./table-identity-context";
 import { tableSocket } from "./table-socket";
 
@@ -53,14 +57,14 @@ export function TableOwnershipTransferPanel({
     respondToOwnershipTransferAction,
     initialState,
   );
-  const transferForMe = pendingTransfers.find(
-    (transfer) => transfer.targetParticipantPublicId === participantPublicId,
-  );
-  const transferOptions = participants.filter(
-    (participant) =>
-      participant.publicId !== participantPublicId &&
-      participant.role !== "OWNER",
-  );
+  const transferForMe = getPendingOwnershipTransferForParticipant({
+    pendingTransfers,
+    participantPublicId,
+  });
+  const transferOptions = getOwnershipTransferOptions({
+    participants,
+    currentParticipantPublicId: participantPublicId,
+  });
 
   useEffect(() => {
     if (requestState.status === "requested") {
