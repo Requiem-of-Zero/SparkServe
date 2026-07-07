@@ -19,6 +19,25 @@ type TableSessionPageProps = {
   }>;
 };
 
+function CartIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+    >
+      <circle cx="9" cy="20" r="1" />
+      <circle cx="17" cy="20" r="1" />
+      <path d="M3 4h2l2.4 11.5a2 2 0 0 0 2 1.5h7.7a2 2 0 0 0 1.9-1.4L21 8H6" />
+    </svg>
+  );
+}
+
 export default async function TableSessionPage({
   params,
 }: TableSessionPageProps) {
@@ -131,7 +150,10 @@ export default async function TableSessionPage({
           />
           <TableGuestWaitingPanel />
           <div className="mt-8 rounded-lg border border-zinc-800 bg-zinc-900 p-5">
-            <h2 className="text-xl font-semibold">Shared cart</h2>
+            <h2 className="flex items-center gap-2 text-xl font-semibold">
+              <CartIcon />
+              <span>Shared cart</span>
+            </h2>
 
             {session.items.length === 0 ? (
               <p className="mt-3 text-zinc-400">No items added yet.</p>

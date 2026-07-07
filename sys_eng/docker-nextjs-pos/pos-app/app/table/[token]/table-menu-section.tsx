@@ -14,6 +14,25 @@ type TableMenuItem = {
   category: string;
 };
 
+function MenuIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+    >
+      <path d="M4 7h16" />
+      <path d="M4 12h16" />
+      <path d="M4 17h10" />
+    </svg>
+  );
+}
+
 // Customer-facing menu for one table session. Filtering is local; adding items
 // goes through the realtime cart button so all guests stay in sync.
 export function TableMenuSection({
@@ -42,7 +61,10 @@ export function TableMenuSection({
     <div className="mx-auto mt-8 max-w-3xl">
       <div className="sticky top-0 z-10 border-b border-zinc-800 bg-zinc-950/95 py-3 backdrop-blur">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">Menu</h2>
+          <h2 className="flex items-center gap-2 text-lg font-semibold">
+            <MenuIcon />
+            <span>Menu</span>
+          </h2>
           <p className="text-xs text-zinc-500">{visibleItems.length} items</p>
         </div>
 
