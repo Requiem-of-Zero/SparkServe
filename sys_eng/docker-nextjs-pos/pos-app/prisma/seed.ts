@@ -21,6 +21,153 @@ const prisma = new PrismaClient({
 
 const demoPassword = "abc12345";
 
+const demoMenuItems = [
+  {
+    id: 1,
+    priceCents: 1399,
+    categoryKey: "noodles",
+    sortOrder: 10,
+    imageUrl:
+      "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=900&q=80",
+    translations: [
+      {
+        locale: "en",
+        name: "Beef Noodle Soup",
+        description: "Slow-braised beef with noodles in a rich broth.",
+        ingredients: "Beef, wheat noodles, broth, scallions",
+        category: "Noodles",
+      },
+      {
+        locale: "es",
+        name: "Sopa de Fideos con Res",
+        description: "Res cocida lentamente con fideos en caldo.",
+        ingredients: "Res, fideos de trigo, caldo, cebollín",
+        category: "Fideos",
+      },
+    ],
+  },
+  {
+    id: 2,
+    priceCents: 499,
+    categoryKey: "drinks",
+    sortOrder: 80,
+    imageUrl:
+      "https://images.unsplash.com/photo-1558857563-b371033873b8?auto=format&fit=crop&w=900&q=80",
+    translations: [
+      {
+        locale: "en",
+        name: "Milk Tea",
+        description: "Classic sweet milk tea served cold.",
+        ingredients: "Black tea, milk, sugar",
+        category: "Drinks",
+      },
+      {
+        locale: "es",
+        name: "Té con Leche",
+        description: "Té dulce clásico con leche, servido frío.",
+        ingredients: "Té negro, leche, azúcar",
+        category: "Bebidas",
+      },
+    ],
+  },
+  {
+    id: 3,
+    priceCents: 899,
+    categoryKey: "appetizers",
+    sortOrder: 20,
+    imageUrl:
+      "https://images.unsplash.com/photo-1496116218417-1a781b1c416c?auto=format&fit=crop&w=900&q=80",
+    translations: [
+      {
+        locale: "en",
+        name: "Pork Dumplings",
+        description: "Pan-seared dumplings with soy dipping sauce.",
+        ingredients: "Pork, cabbage, ginger, wheat wrapper",
+        category: "Appetizers",
+      },
+      {
+        locale: "es",
+        name: "Dumplings de Cerdo",
+        description: "Dumplings dorados con salsa de soya.",
+        ingredients: "Cerdo, repollo, jengibre, masa de trigo",
+        category: "Entradas",
+      },
+    ],
+  },
+  {
+    id: 4,
+    priceCents: 1599,
+    categoryKey: "rice",
+    sortOrder: 30,
+    imageUrl:
+      "https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=900&q=80",
+    translations: [
+      {
+        locale: "en",
+        name: "Chicken Fried Rice",
+        description: "Wok-fried rice with chicken, egg, peas, and carrots.",
+        ingredients: "Rice, chicken, egg, peas, carrots",
+        category: "Rice",
+      },
+      {
+        locale: "es",
+        name: "Arroz Frito con Pollo",
+        description: "Arroz al wok con pollo, huevo, arvejas y zanahoria.",
+        ingredients: "Arroz, pollo, huevo, arvejas, zanahoria",
+        category: "Arroz",
+      },
+    ],
+  },
+  {
+    id: 5,
+    priceCents: 1799,
+    categoryKey: "seafood",
+    sortOrder: 40,
+    imageUrl:
+      "https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&w=900&q=80",
+    translations: [
+      {
+        locale: "en",
+        name: "Garlic Shrimp",
+        description: "Sautéed shrimp with garlic butter and herbs.",
+        ingredients: "Shrimp, garlic, butter, parsley",
+        category: "Seafood",
+      },
+      {
+        locale: "es",
+        name: "Camarones al Ajo",
+        description: "Camarones salteados con mantequilla de ajo y hierbas.",
+        ingredients: "Camarones, ajo, mantequilla, perejil",
+        category: "Mariscos",
+      },
+    ],
+  },
+  {
+    id: 6,
+    priceCents: 699,
+    categoryKey: "desserts",
+    sortOrder: 90,
+    imageUrl:
+      "https://images.unsplash.com/photo-1551024506-0bccd828d307?auto=format&fit=crop&w=900&q=80",
+    translations: [
+      {
+        locale: "en",
+        name: "Mango Pudding",
+        description: "Chilled mango pudding with cream.",
+        ingredients: "Mango, cream, sugar, gelatin",
+        category: "Desserts",
+      },
+      {
+        locale: "es",
+        name: "Pudín de Mango",
+        description: "Pudín frío de mango con crema.",
+        ingredients: "Mango, crema, azúcar, gelatina",
+        category: "Postres",
+      },
+    ],
+  },
+];
+
 async function resetDemoPassword(userId: string) {
   const passwordHash = await hashPassword(demoPassword);
 
@@ -186,6 +333,39 @@ async function seedDemoUsers() {
   };
 }
 
+async function resetDemoOperationalData() {
+  await prisma.payment.deleteMany();
+  await prisma.orderItem.deleteMany();
+  await prisma.order.deleteMany();
+  await prisma.tableSessionOwnershipTransfer.deleteMany();
+  await prisma.tableSessionItem.deleteMany();
+  await prisma.tableSessionParticipant.deleteMany();
+  await prisma.tableSession.deleteMany();
+  await prisma.menuItemTranslation.deleteMany();
+  await prisma.menuItem.deleteMany();
+  await prisma.diningTable.deleteMany();
+}
+
+async function seedDemoMenuItems() {
+  for (const item of demoMenuItems) {
+    await prisma.menuItem.create({
+      data: {
+        id: item.id,
+        priceCents: item.priceCents,
+        categoryKey: item.categoryKey,
+        sortOrder: item.sortOrder,
+        imageUrl: item.imageUrl,
+        active: true,
+        translations: {
+          create: item.translations,
+        },
+      },
+    });
+  }
+
+  return demoMenuItems.map((item) => item.id);
+}
+
 function demoTableToken(row: string, col: number) {
   const tableKey = `${row.toLowerCase()}${col}`;
   const tokenByTable: Record<string, string> = {
@@ -233,6 +413,8 @@ async function seedDemoTableSessions() {
 }
 
 async function main() {
+  await resetDemoOperationalData();
+
   await prisma.restaurantSettings.upsert({
     where: { id: 1 },
     update: {
@@ -264,87 +446,12 @@ async function main() {
     skipDuplicates: true,
   });
 
-  const noodleSoup = await prisma.menuItem.upsert({
-    where: { id: 1 },
-    update: {
-      priceCents: 1399,
-      categoryKey: "noodles",
-      sortOrder: 10,
-      active: true,
-    },
-    create: {
-      id: 1,
-      priceCents: 1399,
-      categoryKey: "noodles",
-      sortOrder: 10,
-    },
-  });
-
-  await prisma.menuItemTranslation.createMany({
-    data: [
-      {
-        menuItemId: noodleSoup.id,
-        locale: "en",
-        name: "Beef Noodle Soup",
-        description: "Slow-braised beef with noodles in a rich broth.",
-        ingredients: "Beef, wheat noodles, broth, scallions",
-        category: "Noodles",
-      },
-      {
-        menuItemId: noodleSoup.id,
-        locale: "es",
-        name: "Sopa de Fideos con Res",
-        description: "Res cocida lentamente con fideos en caldo.",
-        ingredients: "Res, fideos de trigo, caldo, cebollín",
-        category: "Fideos",
-      },
-    ],
-    skipDuplicates: true,
-  });
-
-  const milkTea = await prisma.menuItem.upsert({
-    where: { id: 2 },
-    update: {
-      priceCents: 499,
-      categoryKey: "drinks",
-      sortOrder: 20,
-      active: true,
-    },
-    create: {
-      id: 2,
-      priceCents: 499,
-      categoryKey: "drinks",
-      sortOrder: 20,
-    },
-  });
-
-  await prisma.menuItemTranslation.createMany({
-    data: [
-      {
-        menuItemId: milkTea.id,
-        locale: "en",
-        name: "Milk Tea",
-        description: "Classic sweet milk tea served cold.",
-        ingredients: "Black tea, milk, sugar",
-        category: "Drinks",
-      },
-      {
-        menuItemId: milkTea.id,
-        locale: "es",
-        name: "Té con Leche",
-        description: "Té dulce clásico con leche, servido frío.",
-        ingredients: "Té negro, leche, azúcar",
-        category: "Bebidas",
-      },
-    ],
-    skipDuplicates: true,
-  });
-
+  const menuItemIds = await seedDemoMenuItems();
   const demoUsers = await seedDemoUsers();
   const demoTableSessions = await seedDemoTableSessions();
 
   console.log("Seeded demo data:", {
-    menuItems: [noodleSoup.id, milkTea.id],
+    menuItems: menuItemIds,
     demoTableSessions,
     demoUsers,
     password: demoPassword,
