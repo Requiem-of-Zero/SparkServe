@@ -7,8 +7,10 @@ import type { CustomerSocialProvider } from "@/lib/social-providers";
 
 export function SocialLoginButtons({
   providers,
+  callbackURL,
 }: {
   providers: CustomerSocialProvider[];
+  callbackURL: string;
 }) {
   // Tracks the provider that is redirecting so users cannot double-submit.
   const [activeProvider, setActiveProvider] = useState<string | null>(null);
@@ -23,7 +25,7 @@ export function SocialLoginButtons({
     // Better Auth redirects to the provider and then back through /api/auth/*.
     await authClient.signIn.social({
       provider: provider.id,
-      callbackURL: "/customer/account",
+      callbackURL,
       errorCallbackURL: "/customer/login",
     });
 

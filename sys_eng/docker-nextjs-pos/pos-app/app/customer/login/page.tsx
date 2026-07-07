@@ -7,6 +7,7 @@ import { customerSocialProviders } from "@/lib/social-providers";
 type CustomerLoginPageProps = {
   searchParams?: Promise<{
     created?: string;
+    returnTo?: string;
   }>;
 };
 
@@ -14,6 +15,11 @@ export default async function CustomerLoginPage({
   searchParams,
 }: CustomerLoginPageProps) {
   const params = await searchParams;
+  // Only allow internal relative redirects so OAuth cannot bounce to a bad URL.
+  const returnTo =
+    params?.returnTo?.startsWith("/") && !params.returnTo.startsWith("//")
+      ? params.returnTo
+      : "/customer/account";
 
   return (
     <main className="min-h-screen bg-zinc-950 px-6 py-12 text-white">
@@ -33,8 +39,11 @@ export default async function CustomerLoginPage({
           </p>
         ) : null}
 
-        <SocialLoginButtons providers={customerSocialProviders} />
-        <CustomerLoginForm />
+        <SocialLoginButtons
+          providers={customerSocialProviders}
+          callbackURL={returnTo}
+        />
+        <CustomerLoginForm callbackURL={returnTo} />
 
         <p className="mt-6 text-sm text-zinc-500">
           New here?{" "}

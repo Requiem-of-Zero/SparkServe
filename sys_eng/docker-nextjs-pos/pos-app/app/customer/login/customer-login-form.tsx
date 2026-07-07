@@ -5,7 +5,7 @@ import { FormEvent, useState } from "react";
 
 import { authClient } from "@/lib/auth-client";
 
-export function CustomerLoginForm() {
+export function CustomerLoginForm({ callbackURL }: { callbackURL: string }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -23,7 +23,7 @@ export function CustomerLoginForm() {
     const result = await authClient.signIn.email({
       email,
       password,
-      callbackURL: "/customer/account",
+      callbackURL,
     });
 
     setIsSubmitting(false);
@@ -33,7 +33,7 @@ export function CustomerLoginForm() {
       return;
     }
 
-    router.push("/customer/account");
+    router.push(callbackURL);
     router.refresh();
   }
 

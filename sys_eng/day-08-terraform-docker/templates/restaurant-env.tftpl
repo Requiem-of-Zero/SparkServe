@@ -4,6 +4,7 @@ NEXT_PUBLIC_APP_NAME="${restaurant.name}"
 NEXT_PUBLIC_DEPLOYMENT_ENV=homelab
 # Better Auth needs the app URL for callbacks/cookies and a high-entropy secret for signing.
 BETTER_AUTH_URL=${restaurant.app_url}
+BETTER_AUTH_TRUSTED_ORIGINS=${restaurant.app_url}
 BETTER_AUTH_SECRET=${restaurant.better_auth_secret}
 NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED=${google.enabled}
 NEXT_PUBLIC_APPLE_OAUTH_ENABLED=false

@@ -17,7 +17,10 @@ export default function CustomerSignupPage() {
           Join the customer portal for loyalty points and future rewards.
         </p>
 
-        <SocialLoginButtons providers={customerSocialProviders} />
+        <SocialLoginButtons
+          providers={customerSocialProviders}
+          callbackURL="/customer/account"
+        />
 
         <form action={customerSignUpAction} className="mt-8 space-y-4">
           <TextInput name="name" label="Name" required />
