@@ -113,6 +113,11 @@ export function TableLiveClient({ token }: { token: string }) {
       setNotice(message);
     }
 
+    function handleParticipantJoined({ guestName }: { guestName?: string }) {
+      setNotice(`${guestName ?? "Someone"} joined this table.`);
+      router.refresh();
+    }
+
     function handleOwnerVerified() {
       setNotice("Table owner confirmed the session. Ordering is open.");
       router.refresh();
@@ -135,6 +140,7 @@ export function TableLiveClient({ token }: { token: string }) {
 
     tableSocket.on("connect", handleConnect);
     tableSocket.on("table:joined", handleJoined);
+    tableSocket.on("table:participant-joined", handleParticipantJoined);
     tableSocket.on("table:owner-claimed", handleOwnerClaimed);
     tableSocket.on("table:owner-verified", handleOwnerVerified);
     tableSocket.on(
@@ -160,6 +166,7 @@ export function TableLiveClient({ token }: { token: string }) {
     return () => {
       tableSocket.off("connect", handleConnect);
       tableSocket.off("table:joined", handleJoined);
+      tableSocket.off("table:participant-joined", handleParticipantJoined);
       tableSocket.off("table:owner-claimed", handleOwnerClaimed);
       tableSocket.off("table:owner-verified", handleOwnerVerified);
       tableSocket.off(

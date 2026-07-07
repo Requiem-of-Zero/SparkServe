@@ -337,6 +337,10 @@ io.on("connection", (socket) => {
         participantRole: participant.role,
       });
 
+      socket.to(room).emit("table:participant-joined", {
+        guestName: participant.displayName,
+      });
+
       console.log(`${participant.displayName} joined ${room}`);
     },
   );
