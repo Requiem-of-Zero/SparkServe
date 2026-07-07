@@ -1,3 +1,4 @@
+/// Physical restaurant table that can be printed as a QR code destination.
 model DiningTable {
   id        Int      @id @default(autoincrement())
   row       String
@@ -13,23 +14,76 @@ model DiningTable {
   @@unique([row, col])
 }
 
+/// One live dining visit opened from a table QR code.
 model TableSession {
-  id          Int                @id @default(autoincrement())
-  tableId     Int
-  publicToken String             @unique
-  status      TableSessionStatus @default(OPEN)
-  openedAt    DateTime           @default(now())
-  submittedAt DateTime?
-  closedAt    DateTime?
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
+  id            Int                @id @default(autoincrement())
+  tableId       Int
+  publicToken   String             @unique
+  status        TableSessionStatus @default(OPEN)
+  openedAt      DateTime           @default(now())
+  attendeeCount Int?
+  submittedAt   DateTime?
+  closedAt      DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
 
-  table DiningTable        @relation(fields: [tableId], references: [id])
-  items TableSessionItem[]
+  table                     DiningTable                     @relation(fields: [tableId], references: [id])
+  items                     TableSessionItem[]
+  orders                    Order[]
+  participants              TableSessionParticipant[]
+  ownershipTransferRequests TableSessionOwnershipTransfer[]
 
   @@index([tableId, status])
 }
 
+/// One browser/device/person connected to a table session.
+/// publicId is stored client-side and survives guest login/logout.
+model TableSessionParticipant {
+  id                         Int                         @id @default(autoincrement())
+  tableSessionId             Int
+  userId                     String?
+  publicId                   String                      @unique
+  displayName                String
+  role                       TableSessionParticipantRole @default(GUEST)
+  phoneNumber                String?
+  phoneVerificationCodeHash  String?
+  phoneVerificationExpiresAt DateTime?
+  phoneVerifiedAt            DateTime?
+  createdAt                  DateTime                    @default(now())
+  updatedAt                  DateTime                    @updatedAt
+
+  tableSession                TableSession                    @relation(fields: [tableSessionId], references: [id], onDelete: Cascade)
+  user                        User?                           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  requestedOrders             Order[]
+  requestedOwnershipTransfers TableSessionOwnershipTransfer[] @relation("OwnershipTransferRequester")
+  receivedOwnershipTransfers  TableSessionOwnershipTransfer[] @relation("OwnershipTransferTarget")
+
+  @@unique([tableSessionId, userId])
+  @@index([tableSessionId, role])
+  @@index([userId])
+}
+
+/// Owner-initiated handoff; target must accept before owner role changes.
+model TableSessionOwnershipTransfer {
+  id                       Int                     @id @default(autoincrement())
+  tableSessionId           Int
+  requestedByParticipantId Int
+  targetParticipantId      Int
+  status                   OwnershipTransferStatus @default(PENDING)
+  createdAt                DateTime                @default(now())
+  updatedAt                DateTime                @updatedAt
+  respondedAt              DateTime?
+
+  tableSession           TableSession            @relation(fields: [tableSessionId], references: [id], onDelete: Cascade)
+  requestedByParticipant TableSessionParticipant @relation("OwnershipTransferRequester", fields: [requestedByParticipantId], references: [id], onDelete: Cascade)
+  targetParticipant      TableSessionParticipant @relation("OwnershipTransferTarget", fields: [targetParticipantId], references: [id], onDelete: Cascade)
+
+  @@index([tableSessionId, status])
+  @@index([targetParticipantId, status])
+  @@index([requestedByParticipantId])
+}
+
+/// Shared cart row before items are submitted as a kitchen/payment order.
 model TableSessionItem {
   id             Int      @id @default(autoincrement())
   tableSessionId Int
@@ -50,5 +104,17 @@ enum TableSessionStatus {
   OPEN
   SUBMITTED
   CHECKED_OUT
+  CANCELLED
+}
+
+enum TableSessionParticipantRole {
+  OWNER
+  GUEST
+}
+
+enum OwnershipTransferStatus {
+  PENDING
+  ACCEPTED
+  DENIED
   CANCELLED
 }
