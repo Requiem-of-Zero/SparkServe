@@ -1,6 +1,9 @@
+import Link from "next/link";
+
 import { getCurrentSession } from "@/lib/employee-auth";
 import { getTableSessionByToken } from "@/lib/table-sessions";
 import { prisma } from "@/lib/prisma";
+import { canTableAcceptOrders } from "@/lib/table-owner-verification";
 import { TableIdentityProvider } from "./table-identity-context";
 import { TableGuestWaitingPanel } from "./table-guest-waiting-panel";
 import { TableLoginBar } from "./table-login-bar";
@@ -41,9 +44,12 @@ export default async function TableSessionPage({
         not: null,
       },
     },
-    select: { id: true },
+    select: { phoneVerifiedAt: true },
   });
-  const canOrder = Boolean(verifiedOwner);
+  const canOrder = canTableAcceptOrders({
+    sessionStatus: session.status,
+    ownerPhoneVerifiedAt: verifiedOwner?.phoneVerifiedAt,
+  });
   const participants = await prisma.tableSessionParticipant.findMany({
     where: { tableSessionId: session.id },
     orderBy: { createdAt: "asc" },
@@ -97,6 +103,13 @@ export default async function TableSessionPage({
         fallbackStorageKey={user?.id ? guestIdentityStorageKey : undefined}
       >
         <section className="mx-auto max-w-3xl">
+          <Link
+            href="/dev/table-qr"
+            className="mb-4 inline-flex rounded-md border border-zinc-700 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800"
+          >
+            Back to table QR
+          </Link>
+
           <TableLoginBar />
 
           <h1 className="text-3xl font-bold">

@@ -59,7 +59,7 @@ export function AddMenuItemButton({
   }
 
   return (
-    <div className="mt-3 space-y-2">
+    <div className="space-y-2">
       <div className="flex items-center justify-end gap-2">
         <div className="flex h-9 items-center rounded-md border border-zinc-700">
           <button

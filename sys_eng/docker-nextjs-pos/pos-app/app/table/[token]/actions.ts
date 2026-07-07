@@ -8,6 +8,13 @@ import {
   TableSessionParticipantRole,
 } from "@/lib/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
+import {
+  canParticipantRequestOwnerVerification,
+  isSixDigitVerificationCode,
+  isValidAttendeeCount,
+  type TableOwnerRole,
+  type TableSessionStatusLike,
+} from "@/lib/table-owner-verification";
 
 export type OwnerVerificationState = {
   devCode?: string;
@@ -72,8 +79,12 @@ async function requireOwnerParticipant({
 
   if (
     !participant ||
-    participant.tableSessionId !== session.id ||
-    participant.role !== TableSessionParticipantRole.OWNER
+    !canParticipantRequestOwnerVerification({
+      tableSessionId: session.id,
+      participantTableSessionId: participant.tableSessionId,
+      participantRole: participant.role as TableOwnerRole,
+      sessionStatus: session.status as TableSessionStatusLike,
+    })
   ) {
     throw new Error("Only the table session owner can do this.");
   }
@@ -279,7 +290,7 @@ export async function requestOwnerPhoneVerificationAction(
     const phoneNumber = readRequiredString(formData, "phoneNumber");
     const attendeeCount = Number(formData.get("attendeeCount"));
 
-    if (!Number.isInteger(attendeeCount) || attendeeCount < 1 || attendeeCount > 99) {
+    if (!isValidAttendeeCount(attendeeCount)) {
       throw new Error("Attendee count must be between 1 and 99.");
     }
 
@@ -334,6 +345,11 @@ export async function verifyOwnerPhoneCodeAction(
       "participantPublicId",
     );
     const code = readRequiredString(formData, "verificationCode");
+
+    if (!isSixDigitVerificationCode(code)) {
+      throw new Error("Verification code must be 6 digits.");
+    }
+
     const { participant } = await requireOwnerParticipant({
       token,
       participantPublicId,

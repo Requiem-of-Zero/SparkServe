@@ -39,17 +39,21 @@ export function TableMenuSection({
       : menuItems.filter((item) => (item.categoryKey ?? "menu") === activeCategory);
 
   return (
-    <div className="mt-8 rounded-lg border border-zinc-800 bg-zinc-900 p-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-xl font-semibold">Menu</h2>
-        <div className="flex flex-wrap gap-2">
+    <div className="mx-auto mt-8 max-w-3xl">
+      <div className="sticky top-0 z-10 border-b border-zinc-800 bg-zinc-950/95 py-3 backdrop-blur">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">Menu</h2>
+          <p className="text-xs text-zinc-500">{visibleItems.length} items</p>
+        </div>
+
+        <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
           <button
             type="button"
             onClick={() => setActiveCategory("all")}
-            className={`rounded-md px-3 py-1.5 text-sm font-semibold ${
+            className={`shrink-0 rounded-md px-3 py-1.5 text-sm font-semibold ${
               activeCategory === "all"
                 ? "bg-emerald-500 text-zinc-950"
-                : "border border-zinc-700 text-zinc-200 hover:bg-zinc-800"
+                : "border border-zinc-700 text-zinc-600 hover:bg-zinc-800 dark:text-zinc-200"
             }`}
           >
             All
@@ -59,10 +63,10 @@ export function TableMenuSection({
               key={category.key}
               type="button"
               onClick={() => setActiveCategory(category.key)}
-              className={`rounded-md px-3 py-1.5 text-sm font-semibold ${
+              className={`shrink-0 rounded-md px-3 py-1.5 text-sm font-semibold ${
                 activeCategory === category.key
                   ? "bg-emerald-500 text-zinc-950"
-                  : "border border-zinc-700 text-zinc-200 hover:bg-zinc-800"
+                  : "border border-zinc-700 text-zinc-600 hover:bg-zinc-800 dark:text-zinc-200"
               }`}
             >
               {category.label}
@@ -71,37 +75,44 @@ export function TableMenuSection({
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3">
+      <div className="mt-3 divide-y divide-zinc-800 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900">
         {visibleItems.map((item) => (
           <div
             key={item.id}
-            className="overflow-hidden rounded-md border border-zinc-800 bg-zinc-950"
+            className="grid grid-cols-[88px_minmax(0,1fr)] gap-3 bg-zinc-950 p-3 sm:grid-cols-[112px_minmax(0,1fr)]"
           >
-            {item.imageUrl ? (
-              <img
-                src={item.imageUrl}
-                alt=""
-                className="h-40 w-full object-cover"
-              />
-            ) : null}
-            <div className="flex items-start justify-between gap-4 p-4">
-              <div>
-                <h3 className="font-semibold">{item.name}</h3>
+            <div className="h-24 overflow-hidden rounded-md bg-zinc-900 sm:h-28">
+              {item.imageUrl ? (
+                <img
+                  src={item.imageUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              ) : null}
+            </div>
 
-                {item.description ? (
-                  <p className="mt-1 text-sm text-zinc-400">
-                    {item.description}
-                  </p>
-                ) : null}
+            <div className="min-w-0">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="line-clamp-2 font-semibold leading-snug">
+                    {item.name}
+                  </h3>
 
-                <p className="mt-2 text-sm text-zinc-500">{item.category}</p>
-              </div>
+                  {item.description ? (
+                    <p className="mt-1 line-clamp-2 text-sm leading-snug text-zinc-400">
+                      {item.description}
+                    </p>
+                  ) : null}
 
-              <div className="text-right">
-                <p className="font-semibold">
+                  <p className="mt-2 text-xs text-zinc-500">{item.category}</p>
+                </div>
+
+                <p className="shrink-0 text-sm font-semibold">
                   ${(item.priceCents / 100).toFixed(2)}
                 </p>
+              </div>
 
+              <div className="mt-3 flex justify-end">
                 <AddMenuItemButton token={token} menuItemId={item.id} />
               </div>
             </div>

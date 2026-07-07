@@ -9,6 +9,7 @@ import {
   resolveParticipantIdentity,
   type ParticipantIdentity,
 } from "../lib/table-participant-identity";
+import { canTableAcceptOrders } from "../lib/table-owner-verification";
 
 const io = new Server(3001, {
   cors: {
@@ -151,6 +152,45 @@ function getMenuItemDisplayName(item: {
   };
 }) {
   return item.menuItem.translations[0]?.name ?? `Menu item #${item.menuItemId}`;
+}
+
+// Server-side order gate. This prevents a custom Socket.IO client from adding
+// items before the table owner has verified the session phone/code.
+async function getOrderableTableSession(token: string) {
+  const session = await prisma.tableSession.findUnique({
+    where: { publicToken: token },
+    include: {
+      participants: {
+        where: { role: TableSessionParticipantRole.OWNER },
+        select: { phoneVerifiedAt: true },
+        take: 1,
+      },
+    },
+  });
+
+  if (!session || session.status !== "OPEN") {
+    return {
+      ok: false,
+      message: "Table session is not open.",
+    } as const;
+  }
+
+  if (
+    !canTableAcceptOrders({
+      sessionStatus: session.status,
+      ownerPhoneVerifiedAt: session.participants[0]?.phoneVerifiedAt,
+    })
+  ) {
+    return {
+      ok: false,
+      message: "Table owner must verify this session before ordering.",
+    } as const;
+  }
+
+  return {
+    ok: true,
+    session,
+  } as const;
 }
 
 type CartAckResponse =
@@ -325,17 +365,17 @@ io.on("connection", (socket) => {
           return;
         }
 
-        const session = await prisma.tableSession.findUnique({
-          where: { publicToken: token },
-        });
+        const orderableSession = await getOrderableTableSession(token);
 
-        if (!session || session.status !== "OPEN") {
-          ack?.({ ok: false, message: "Table session is not open." });
+        if (!orderableSession.ok) {
+          ack?.({ ok: false, message: orderableSession.message });
           socket.emit("cart:error", {
-            message: "Table session is not open.",
+            message: orderableSession.message,
           });
           return;
         }
+
+        const { session } = orderableSession;
 
         const existingItem = await prisma.tableSessionItem.findFirst({
           where: {
@@ -426,17 +466,17 @@ io.on("connection", (socket) => {
           return;
         }
 
-        const session = await prisma.tableSession.findUnique({
-          where: { publicToken: token },
-        });
+        const orderableSession = await getOrderableTableSession(token);
 
-        if (!session || session.status !== "OPEN") {
-          ack?.({ ok: false, message: "Table session is not open." });
+        if (!orderableSession.ok) {
+          ack?.({ ok: false, message: orderableSession.message });
           socket.emit("cart:error", {
-            message: "Table session is not open.",
+            message: orderableSession.message,
           });
           return;
         }
+
+        const { session } = orderableSession;
 
         const existingItem = await prisma.tableSessionItem.findUnique({
           where: { id: itemId },
@@ -503,17 +543,17 @@ io.on("connection", (socket) => {
           return;
         }
 
-        const session = await prisma.tableSession.findUnique({
-          where: { publicToken: token },
-        });
+        const orderableSession = await getOrderableTableSession(token);
 
-        if (!session || session.status !== "OPEN") {
-          ack?.({ ok: false, message: "Table session is not open." });
+        if (!orderableSession.ok) {
+          ack?.({ ok: false, message: orderableSession.message });
           socket.emit("cart:error", {
-            message: "Table session is not open.",
+            message: orderableSession.message,
           });
           return;
         }
+
+        const { session } = orderableSession;
 
         const existingItem = await prisma.tableSessionItem.findUnique({
           where: { id: itemId },

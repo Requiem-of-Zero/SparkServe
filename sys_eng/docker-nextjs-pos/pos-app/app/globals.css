@@ -24,3 +24,76 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+:root[data-theme="dark"] {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+}
+
+:root[data-theme="light"] {
+  --background: #f7f7f8;
+  --foreground: #18181b;
+}
+
+/* Temporary bridge while the UI still uses dark zinc utility classes directly. */
+:root[data-theme="light"] .bg-zinc-950 {
+  background-color: #ffffff !important;
+}
+
+:root[data-theme="light"] .bg-zinc-900 {
+  background-color: #f4f4f5 !important;
+}
+
+:root[data-theme="light"] .bg-zinc-900\/95 {
+  background-color: rgb(250 250 250 / 0.95) !important;
+}
+
+:root[data-theme="light"] .bg-zinc-950\/95 {
+  background-color: rgb(255 255 255 / 0.95) !important;
+}
+
+:root[data-theme="light"] .bg-zinc-900\/50,
+:root[data-theme="light"] .bg-zinc-950\/30,
+:root[data-theme="light"] .bg-amber-950\/30,
+:root[data-theme="light"] .bg-emerald-950\/25 {
+  background-color: #ffffff !important;
+}
+
+:root[data-theme="light"] .bg-zinc-800,
+:root[data-theme="light"] .hover\:bg-zinc-800:hover {
+  background-color: #e4e4e7 !important;
+}
+
+:root[data-theme="light"] .border-zinc-800,
+:root[data-theme="light"] .border-zinc-700,
+:root[data-theme="light"] .border-zinc-600 {
+  border-color: #d4d4d8 !important;
+}
+
+:root[data-theme="light"] .text-white,
+:root[data-theme="light"] .text-zinc-100,
+:root[data-theme="light"] .text-zinc-200,
+:root[data-theme="light"] .text-zinc-300 {
+  color: #18181b !important;
+}
+
+:root[data-theme="light"] .text-zinc-400,
+:root[data-theme="light"] .text-zinc-500 {
+  color: #71717a !important;
+}
+
+:root[data-theme="light"] .text-amber-100 {
+  color: #78350f !important;
+}
+
+:root[data-theme="light"] .text-amber-300 {
+  color: #a16207 !important;
+}
+
+:root[data-theme="light"] .text-emerald-300 {
+  color: #047857 !important;
+}
+
+:root[data-theme="light"] .shadow-black\/20 {
+  --tw-shadow-color: rgb(39 39 42 / 0.12) !important;
+}
