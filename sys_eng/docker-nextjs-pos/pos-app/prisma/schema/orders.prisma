@@ -1,0 +1,127 @@
+/// Checkout/order record created from a table session cart.
+model Order {
+  id             Int         @id @default(autoincrement())
+  tableSessionId Int
+  status         OrderStatus @default(DRAFT)
+
+  subtotalCents Int
+  taxCents      Int @default(0)
+  tipCents      Int @default(0)
+  totalCents    Int
+
+  requestedByParticipantId Int?
+  checkedOutByEmployeeId   Int?
+
+  createdAt   DateTime  @default(now())
+  submittedAt DateTime?
+  paidAt      DateTime?
+  cancelledAt DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  tableSession           TableSession             @relation(fields: [tableSessionId], references: [id])
+  requestedByParticipant TableSessionParticipant? @relation(fields: [requestedByParticipantId], references: [id])
+  checkedOutByEmployee   EmployeeProfile?         @relation(fields: [checkedOutByEmployeeId], references: [id])
+  payments               Payment[]
+  items                  OrderItem[]
+
+  @@index([tableSessionId, status])
+  @@index([requestedByParticipantId])
+  @@index([checkedOutByEmployeeId])
+}
+
+/// Receipt-safe snapshot of a menu item at order time.
+model OrderItem {
+  id         Int  @id @default(autoincrement())
+  orderId    Int
+  menuItemId Int?
+
+  // Snapshot fields so old receipts stay accurate if menu changes later.
+  name           String
+  category       String?
+  quantity       Int
+  unitPriceCents Int
+  lineTotalCents Int
+  note           String?
+
+  createdAt DateTime @default(now())
+
+  order    Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem MenuItem? @relation(fields: [menuItemId], references: [id])
+
+  @@index([orderId])
+  @@index([menuItemId])
+}
+
+/// Payment attempt/result for an order, including provider and platform fee.
+model Payment {
+  id       Int             @id @default(autoincrement())
+  orderId  Int
+  status   PaymentStatus   @default(PENDING)
+  method   PaymentMethod
+  provider PaymentProvider @default(NONE)
+
+  amountCents       Int
+  platformFeeCents  Int     @default(0)
+  providerPaymentId String?
+  providerAccountId String?
+
+  createdAt    DateTime  @default(now())
+  authorizedAt DateTime?
+  paidAt       DateTime?
+  failedAt     DateTime?
+  refundedAt   DateTime?
+  updatedAt    DateTime  @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id])
+
+  @@index([orderId, status])
+  @@index([provider, providerPaymentId])
+}
+
+/// Per-restaurant payment routing and platform fee settings.
+model RestaurantPaymentSettings {
+  id                   Int @id @default(autoincrement())
+  restaurantSettingsId Int @unique
+
+  stripeConnectedAccountId String?
+  stripeTerminalLocationId String?
+
+  // Example: 100 = 1.00%, 50 = 0.50%
+  platformFeeBasisPoints Int @default(100)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  restaurantSettings RestaurantSettings @relation(fields: [restaurantSettingsId], references: [id])
+}
+
+enum OrderStatus {
+  DRAFT
+  PENDING_OWNER_APPROVAL
+  APPROVED
+  SENT_TO_KITCHEN
+  READY_FOR_CHECKOUT
+  PAID
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  PAID
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  CUSTOMER_ONLINE_CARD
+  STAFF_TERMINAL_CARD
+  MANUAL_COMP
+}
+
+enum PaymentProvider {
+  NONE
+  STRIPE
+}

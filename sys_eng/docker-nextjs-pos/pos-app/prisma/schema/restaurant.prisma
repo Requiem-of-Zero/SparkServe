@@ -15,4 +15,6 @@ model RestaurantSettings {
   supportedLocales String[] @default(["en"])
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
+  paymentSettings RestaurantPaymentSettings?
 }
