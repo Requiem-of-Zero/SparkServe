@@ -335,6 +335,7 @@ async function seedDemoUsers() {
 
 async function resetDemoOperationalData() {
   await prisma.payment.deleteMany();
+  await prisma.checkout.deleteMany();
   await prisma.orderItem.deleteMany();
   await prisma.order.deleteMany();
   await prisma.tableSessionOwnershipTransfer.deleteMany();
@@ -429,6 +430,19 @@ async function main() {
       publicUrl: "http://localhost:8080",
       receiptFooter: "Thank you for visiting Big Fish House.",
       supportedLocales: ["en", "es"],
+    },
+  });
+
+  await prisma.restaurantPaymentSettings.upsert({
+    where: { restaurantSettingsId: 1 },
+    update: {
+      stripeConnectedAccountId: process.env.STRIPE_CONNECTED_ACCOUNT_ID || null,
+      platformFeeBasisPoints: 100,
+    },
+    create: {
+      restaurantSettingsId: 1,
+      stripeConnectedAccountId: process.env.STRIPE_CONNECTED_ACCOUNT_ID || null,
+      platformFeeBasisPoints: 100,
     },
   });
 
