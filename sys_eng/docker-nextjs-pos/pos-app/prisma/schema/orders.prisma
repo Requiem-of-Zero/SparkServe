@@ -2,6 +2,7 @@
 model Order {
   id             Int         @id @default(autoincrement())
   tableSessionId Int
+  checkoutId     Int?
   status         OrderStatus @default(DRAFT)
 
   subtotalCents Int
@@ -19,12 +20,14 @@ model Order {
   updatedAt   DateTime  @updatedAt
 
   tableSession           TableSession             @relation(fields: [tableSessionId], references: [id])
+  checkout               Checkout?                @relation(fields: [checkoutId], references: [id])
   requestedByParticipant TableSessionParticipant? @relation(fields: [requestedByParticipantId], references: [id])
   checkedOutByEmployee   EmployeeProfile?         @relation(fields: [checkedOutByEmployeeId], references: [id])
   payments               Payment[]
   items                  OrderItem[]
 
   @@index([tableSessionId, status])
+  @@index([checkoutId])
   @@index([requestedByParticipantId])
   @@index([checkedOutByEmployeeId])
 }
@@ -54,11 +57,12 @@ model OrderItem {
 
 /// Payment attempt/result for an order, including provider and platform fee.
 model Payment {
-  id       Int             @id @default(autoincrement())
-  orderId  Int
-  status   PaymentStatus   @default(PENDING)
-  method   PaymentMethod
-  provider PaymentProvider @default(NONE)
+  id         Int             @id @default(autoincrement())
+  orderId    Int?
+  checkoutId Int?
+  status     PaymentStatus   @default(PENDING)
+  method     PaymentMethod
+  provider   PaymentProvider @default(NONE)
 
   amountCents       Int
   platformFeeCents  Int     @default(0)
@@ -72,10 +76,42 @@ model Payment {
   refundedAt   DateTime?
   updatedAt    DateTime  @updatedAt
 
-  order Order @relation(fields: [orderId], references: [id])
+  order    Order?    @relation(fields: [orderId], references: [id])
+  checkout Checkout? @relation(fields: [checkoutId], references: [id])
 
   @@index([orderId, status])
+  @@index([checkoutId, status])
   @@index([provider, providerPaymentId])
+}
+
+/// Final bill for a table session; gathers multiple kitchen orders into one receipt.
+model Checkout {
+  id             Int            @id @default(autoincrement())
+  tableSessionId Int
+  status         CheckoutStatus @default(PENDING)
+  currency       String         @default("usd")
+
+  subtotalCents    Int
+  taxCents         Int @default(0)
+  tipCents         Int @default(0)
+  totalCents       Int
+  platformFeeCents Int @default(0)
+
+  stripeCheckoutSessionId String? @unique
+  stripePaymentIntentId   String?
+  stripeCheckoutUrl       String?
+  stripeClientSecret      String?
+
+  createdAt   DateTime  @default(now())
+  paidAt      DateTime?
+  cancelledAt DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  tableSession TableSession @relation(fields: [tableSessionId], references: [id])
+  orders       Order[]
+  payments     Payment[]
+
+  @@index([tableSessionId, status])
 }
 
 /// Per-restaurant payment routing and platform fee settings.
@@ -124,4 +160,10 @@ enum PaymentMethod {
 enum PaymentProvider {
   NONE
   STRIPE
+}
+
+enum CheckoutStatus {
+  PENDING
+  PAID
+  CANCELLED
 }

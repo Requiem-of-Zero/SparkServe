@@ -30,6 +30,7 @@ model TableSession {
   table                     DiningTable                     @relation(fields: [tableId], references: [id])
   items                     TableSessionItem[]
   orders                    Order[]
+  checkouts                 Checkout[]
   participants              TableSessionParticipant[]
   ownershipTransferRequests TableSessionOwnershipTransfer[]
 
