@@ -75,6 +75,18 @@ export async function getTableSessionByToken(publicToken: string) {
           },
         },
       },
+      orders: {
+        where: {
+          paidAt: null,
+          cancelledAt: null,
+        },
+        orderBy: { submittedAt: "asc" },
+        include: {
+          items: {
+            orderBy: { createdAt: "asc" },
+          },
+        },
+      },
     },
   });
 
