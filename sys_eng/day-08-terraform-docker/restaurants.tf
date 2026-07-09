@@ -30,6 +30,11 @@ resource "local_sensitive_file" "restaurant_env" {
       client_id     = ""
       client_secret = ""
     })
+    stripe = lookup(var.restaurant_stripe, each.key, {
+      secret_key           = ""
+      publishable_key      = ""
+      connected_account_id = ""
+    })
   })
 }
 

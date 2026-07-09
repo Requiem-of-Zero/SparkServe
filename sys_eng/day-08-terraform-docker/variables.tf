@@ -45,6 +45,19 @@ variable "restaurant_google_oauth" {
   default   = {}
 }
 
+# Per-restaurant Stripe keys and connected-account routing. Keep this in
+# terraform.tfvars or TF_VAR_restaurant_stripe because secret keys should not be committed.
+variable "restaurant_stripe" {
+  description = "Stripe payment settings keyed by restaurant slug."
+  type = map(object({
+    secret_key           = string
+    publishable_key      = string
+    connected_account_id = optional(string, "")
+  }))
+  sensitive = true
+  default   = {}
+}
+
 # Private key Terraform uses from the HQ machine when SSHing into restaurant hosts.
 variable "ssh_private_key_path" {
   description = "Private SSH key used by Terraform on the HQ machine to connect to restaurant hosts."
