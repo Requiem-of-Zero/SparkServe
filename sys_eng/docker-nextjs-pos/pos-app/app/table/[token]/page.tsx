@@ -12,6 +12,8 @@ import { TableMenuSection } from "./table-menu-section";
 import { TableOwnershipTransferPanel } from "./table-ownership-transfer-panel";
 import { TableOwnerSetupPanel } from "./table-owner-setup-panel";
 import { TableSessionItemQuantityControls } from "./table-session-item-quantity-controls";
+import { SubmitCartToKitchenButton } from "./submit-cart-to-kitchen-button";
+import { CheckoutButton } from "./checkout-button";
 
 type TableSessionPageProps = {
   params: Promise<{
@@ -110,6 +112,9 @@ export default async function TableSessionPage({
       },
     },
   });
+  const unpaidOrders = session.orders.filter(
+    (order) => order.status === "SENT_TO_KITCHEN" || order.status === "READY_FOR_CHECKOUT",
+  );
 
   return (
     <main className="min-h-screen bg-zinc-950 px-6 py-10 text-white">
@@ -158,6 +163,7 @@ export default async function TableSessionPage({
             {session.items.length === 0 ? (
               <p className="mt-3 text-zinc-400">No items added yet.</p>
             ) : (
+              <>
               <ul className="mt-3 space-y-2">
                 {session.items.map((item) => {
                   const translation = item.menuItem.translations.find(
@@ -183,6 +189,41 @@ export default async function TableSessionPage({
                   );
                 })}
               </ul>
+              <SubmitCartToKitchenButton token={token} />
+              </>
+            )}
+          </div>
+
+          <div className="mt-8 rounded-lg border border-zinc-800 bg-zinc-900 p-5">
+            <h2 className="text-xl font-semibold">Submitted orders</h2>
+            {unpaidOrders.length === 0 ? (
+              <p className="mt-3 text-zinc-400">
+                Send the cart to the kitchen before checkout.
+              </p>
+            ) : (
+              <div className="mt-3 space-y-3">
+                {unpaidOrders.map((order) => (
+                  <div
+                    key={order.id}
+                    className="rounded-md border border-zinc-800 bg-zinc-950 p-3"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-medium">Order #{order.id}</p>
+                      <p className="text-sm text-zinc-300">
+                        ${(order.totalCents / 100).toFixed(2)}
+                      </p>
+                    </div>
+                    <ul className="mt-2 space-y-1 text-sm text-zinc-400">
+                      {order.items.map((item) => (
+                        <li key={item.id}>
+                          {item.quantity}x {item.name}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+                <CheckoutButton token={token} />
+              </div>
             )}
           </div>
         </section>
