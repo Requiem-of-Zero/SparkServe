@@ -4,10 +4,12 @@ import { createHash, randomInt } from "node:crypto";
 import { revalidatePath } from "next/cache";
 
 import {
+  OrderStatus,
   OwnershipTransferStatus,
   TableSessionParticipantRole,
 } from "@/lib/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
+import { calculateOrderTotals } from "@/lib/checkout";
 import { canParticipantRespondToOwnershipTransfer } from "@/lib/table-ownership-transfer";
 import {
   canParticipantRequestOwnerVerification,
@@ -26,6 +28,12 @@ export type OwnerVerificationState = {
 export type OwnershipTransferState = {
   message?: string;
   status: "idle" | "requested" | "accepted" | "denied" | "error";
+};
+
+export type SubmitKitchenState = {
+  message?: string;
+  orderId?: number;
+  status: "idle" | "submitted" | "error";
 };
 
 function readRequiredString(formData: FormData, key: string) {
@@ -404,6 +412,117 @@ export async function verifyOwnerPhoneCodeAction(
   } catch (error) {
     return {
       message: error instanceof Error ? error.message : "Could not verify code.",
+      status: "error",
+    };
+  }
+}
+
+export async function submitCartToKitchenAction(
+  _previousState: SubmitKitchenState,
+  formData: FormData,
+): Promise<SubmitKitchenState> {
+  try {
+    const token = readRequiredString(formData, "token");
+    const participantPublicId = readRequiredString(
+      formData,
+      "participantPublicId",
+    );
+    const { participant, session } = await requireOwnerParticipant({
+      token,
+      participantPublicId,
+    });
+    const verifiedOwner = await prisma.tableSessionParticipant.findFirst({
+      where: {
+        tableSessionId: session.id,
+        role: TableSessionParticipantRole.OWNER,
+        phoneVerifiedAt: { not: null },
+      },
+    });
+
+    if (!verifiedOwner) {
+      throw new Error("Verify the table owner phone before sending to kitchen.");
+    }
+
+    const cartItems = await prisma.tableSessionItem.findMany({
+      where: { tableSessionId: session.id },
+      include: {
+        menuItem: {
+          include: {
+            translations: {
+              where: { locale: "en" },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    if (cartItems.length === 0) {
+      throw new Error("Add items before sending to kitchen.");
+    }
+
+    const restaurantSettings = await prisma.restaurantSettings.findUnique({
+      where: { id: 1 },
+    });
+    const taxRate = Number(restaurantSettings?.taxRate ?? 0);
+    const totals = calculateOrderTotals({
+      lines: cartItems.map((item) => ({
+        quantity: item.quantity,
+        unitPriceCents: item.menuItem.priceCents,
+      })),
+      taxRate,
+    });
+
+    const order = await prisma.$transaction(async (tx) => {
+      const createdOrder = await tx.order.create({
+        data: {
+          tableSessionId: session.id,
+          status: OrderStatus.SENT_TO_KITCHEN,
+          subtotalCents: totals.subtotalCents,
+          taxCents: totals.taxCents,
+          tipCents: totals.tipCents,
+          totalCents: totals.totalCents,
+          requestedByParticipantId: participant.id,
+          submittedAt: new Date(),
+          items: {
+            create: cartItems.map((item) => {
+              const translation = item.menuItem.translations[0];
+              const name = translation?.name ?? `Menu item #${item.menuItemId}`;
+              const category =
+                translation?.category ?? item.menuItem.categoryKey ?? null;
+
+              return {
+                menuItemId: item.menuItemId,
+                name,
+                category,
+                quantity: item.quantity,
+                unitPriceCents: item.menuItem.priceCents,
+                lineTotalCents: item.quantity * item.menuItem.priceCents,
+                note: item.note,
+              };
+            }),
+          },
+        },
+      });
+
+      await tx.tableSessionItem.deleteMany({
+        where: { tableSessionId: session.id },
+      });
+
+      return createdOrder;
+    });
+
+    revalidatePath(`/table/${token}`);
+
+    return {
+      message: `Order #${order.id} sent to kitchen.`,
+      orderId: order.id,
+      status: "submitted",
+    };
+  } catch (error) {
+    return {
+      message:
+        error instanceof Error ? error.message : "Could not send order to kitchen.",
       status: "error",
     };
   }
