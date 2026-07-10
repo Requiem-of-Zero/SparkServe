@@ -14,7 +14,7 @@ export function AddMenuItemButton({
   menuItemId: number;
 }) {
   const router = useRouter();
-  const { canOrder, displayName } = useTableIdentity();
+  const { canOrder, displayName, isReady } = useTableIdentity();
   const [isAdding, setIsAdding] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +25,7 @@ export function AddMenuItemButton({
 
   function addItem() {
     // Guests cannot order until the owner confirms attendee count and phone.
-    if (!canOrder) {
+    if (!isReady || !canOrder) {
       setError("Waiting for the table owner to confirm this session.");
       return;
     }
@@ -84,14 +84,14 @@ export function AddMenuItemButton({
         <button
           type="button"
           onClick={addItem}
-          disabled={isAdding || !canOrder}
+          disabled={isAdding || !isReady || !canOrder}
           className="h-9 rounded-md bg-emerald-500 px-3 text-sm font-semibold text-zinc-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70"
         >
           {isAdding ? "Adding..." : "Add"}
         </button>
       </div>
 
-      {!canOrder ? (
+      {isReady && !canOrder ? (
         <p className="text-xs text-amber-300">
           Waiting for table owner confirmation.
         </p>

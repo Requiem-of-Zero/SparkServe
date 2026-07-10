@@ -26,13 +26,13 @@ export function TableSessionItemQuantityControls({
   quantity: number;
 }) {
   const router = useRouter();
-  const { canOrder, displayName } = useTableIdentity();
+  const { canOrder, displayName, isReady } = useTableIdentity();
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function adjustItem(eventName: "cart:increment-item" | "cart:decrement-item") {
     // The shared cart stays locked until the table owner verifies the session.
-    if (!canOrder) {
+    if (!isReady || !canOrder) {
       setError("Waiting for the table owner to confirm this session.");
       return;
     }
@@ -70,7 +70,7 @@ export function TableSessionItemQuantityControls({
         <button
           type="button"
           onClick={() => adjustItem("cart:decrement-item")}
-          disabled={isUpdating || !canOrder}
+          disabled={isUpdating || !isReady || !canOrder}
           className="h-9 w-9 text-sm font-semibold text-zinc-200 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
           aria-label="Decrease item quantity"
         >
@@ -80,7 +80,7 @@ export function TableSessionItemQuantityControls({
         <button
           type="button"
           onClick={() => adjustItem("cart:increment-item")}
-          disabled={isUpdating || !canOrder}
+          disabled={isUpdating || !isReady || !canOrder}
           className="h-9 w-9 text-sm font-semibold text-zinc-200 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
           aria-label="Increase item quantity"
         >
@@ -88,7 +88,7 @@ export function TableSessionItemQuantityControls({
         </button>
       </div>
 
-      {!canOrder ? (
+      {isReady && !canOrder ? (
         <p className="mt-1 text-xs text-amber-300">Owner confirmation needed.</p>
       ) : null}
 
