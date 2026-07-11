@@ -142,7 +142,10 @@ export default async function TableSessionPage({
 
           <p className="mt-2 text-zinc-400">Session status: {session.status}</p>
           <TableLiveClient token={token} />
-          <TableOwnerSetupPanel token={token} />
+          <TableOwnerSetupPanel
+            token={token}
+            orderVerificationRequired={session.orderVerificationRequired}
+          />
           <TableOwnershipTransferPanel
             token={token}
             participants={participants}
@@ -189,7 +192,10 @@ export default async function TableSessionPage({
                   );
                 })}
               </ul>
-              <SubmitCartToKitchenButton token={token} />
+              <SubmitCartToKitchenButton
+                token={token}
+                orderVerificationRequired={session.orderVerificationRequired}
+              />
               </>
             )}
           </div>

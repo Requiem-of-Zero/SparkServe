@@ -16,16 +16,17 @@ model DiningTable {
 
 /// One live dining visit opened from a table QR code.
 model TableSession {
-  id            Int                @id @default(autoincrement())
-  tableId       Int
-  publicToken   String             @unique
-  status        TableSessionStatus @default(OPEN)
-  openedAt      DateTime           @default(now())
-  attendeeCount Int?
-  submittedAt   DateTime?
-  closedAt      DateTime?
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
+  id                        Int                @id @default(autoincrement())
+  tableId                   Int
+  publicToken               String             @unique
+  status                    TableSessionStatus @default(OPEN)
+  openedAt                  DateTime           @default(now())
+  attendeeCount             Int?
+  orderVerificationRequired Boolean            @default(true)
+  submittedAt               DateTime?
+  closedAt                  DateTime?
+  createdAt                 DateTime           @default(now())
+  updatedAt                 DateTime           @updatedAt
 
   table                     DiningTable                     @relation(fields: [tableId], references: [id])
   items                     TableSessionItem[]

@@ -13,6 +13,7 @@ import { calculateOrderTotals } from "@/lib/checkout";
 import { canParticipantRespondToOwnershipTransfer } from "@/lib/table-ownership-transfer";
 import {
   canParticipantRequestOwnerVerification,
+  canSubmitKitchenOrder,
   isSixDigitVerificationCode,
   isValidAttendeeCount,
   type TableOwnerRole,
@@ -31,9 +32,10 @@ export type OwnershipTransferState = {
 };
 
 export type SubmitKitchenState = {
+  devCode?: string;
   message?: string;
   orderId?: number;
-  status: "idle" | "submitted" | "error";
+  status: "idle" | "code-sent" | "submitted" | "error";
 };
 
 function readRequiredString(formData: FormData, key: string) {
@@ -307,6 +309,8 @@ export async function requestOwnerPhoneVerificationAction(
     );
     const phoneNumber = readRequiredString(formData, "phoneNumber");
     const attendeeCount = Number(formData.get("attendeeCount"));
+    const orderVerificationRequired =
+      formData.get("orderVerificationRequired") !== "off";
 
     if (!isValidAttendeeCount(attendeeCount)) {
       throw new Error("Attendee count must be between 1 and 99.");
@@ -323,7 +327,10 @@ export async function requestOwnerPhoneVerificationAction(
     await prisma.$transaction([
       prisma.tableSession.update({
         where: { id: session.id },
-        data: { attendeeCount },
+        data: {
+          attendeeCount,
+          orderVerificationRequired,
+        },
       }),
       prisma.tableSessionParticipant.update({
         where: { id: participant.id },
@@ -417,6 +424,57 @@ export async function verifyOwnerPhoneCodeAction(
   }
 }
 
+export async function requestKitchenOrderCodeAction(
+  _previousState: SubmitKitchenState,
+  formData: FormData,
+): Promise<SubmitKitchenState> {
+  try {
+    const token = readRequiredString(formData, "token");
+    const participantPublicId = readRequiredString(
+      formData,
+      "participantPublicId",
+    );
+    const { participant } = await requireOwnerParticipant({
+      token,
+      participantPublicId,
+    });
+
+    if (!participant.phoneVerifiedAt || !participant.phoneNumber) {
+      throw new Error("Verify the table owner phone before sending to kitchen.");
+    }
+
+    const code = generateVerificationCode();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    // This is the per-order approval code. The SMS provider will later send it
+    // to participant.phoneNumber; dev mode returns the code for local testing.
+    await prisma.tableSessionParticipant.update({
+      where: { id: participant.id },
+      data: {
+        phoneVerificationCodeHash: hashVerificationCode({
+          code,
+          participantPublicId,
+        }),
+        phoneVerificationExpiresAt: expiresAt,
+      },
+    });
+
+    return {
+      devCode: code,
+      message: "Kitchen submit code generated. SMS provider comes later.",
+      status: "code-sent",
+    };
+  } catch (error) {
+    return {
+      message:
+        error instanceof Error
+          ? error.message
+          : "Could not request kitchen submit code.",
+      status: "error",
+    };
+  }
+}
+
 export async function submitCartToKitchenAction(
   _previousState: SubmitKitchenState,
   formData: FormData,
@@ -427,6 +485,8 @@ export async function submitCartToKitchenAction(
       formData,
       "participantPublicId",
     );
+    const rawVerificationCode = formData.get("verificationCode");
+
     const { participant, session } = await requireOwnerParticipant({
       token,
       participantPublicId,
@@ -441,6 +501,51 @@ export async function submitCartToKitchenAction(
 
     if (!verifiedOwner) {
       throw new Error("Verify the table owner phone before sending to kitchen.");
+    }
+
+    const pendingCodeHash = participant.phoneVerificationCodeHash;
+    const pendingCodeExpiresAt = participant.phoneVerificationExpiresAt;
+
+    if (
+      !canSubmitKitchenOrder({
+        sessionStatus: session.status as TableSessionStatusLike,
+        ownerPhoneVerifiedAt: participant.phoneVerifiedAt,
+        orderVerificationRequired: session.orderVerificationRequired,
+        hasPendingVerificationCode: Boolean(
+          pendingCodeHash && pendingCodeExpiresAt,
+        ),
+      })
+    ) {
+      throw new Error("Request a kitchen submit code first.");
+    }
+
+    if (session.orderVerificationRequired) {
+      if (typeof rawVerificationCode !== "string") {
+        throw new Error("Verification code must be 6 digits.");
+      }
+
+      const verificationCode = rawVerificationCode.trim();
+
+      if (!isSixDigitVerificationCode(verificationCode)) {
+        throw new Error("Verification code must be 6 digits.");
+      }
+
+      if (!pendingCodeHash || !pendingCodeExpiresAt) {
+        throw new Error("Request a kitchen submit code first.");
+      }
+
+      if (pendingCodeExpiresAt < new Date()) {
+        throw new Error("Kitchen submit code expired.");
+      }
+
+      const submittedCodeHash = hashVerificationCode({
+        code: verificationCode,
+        participantPublicId,
+      });
+
+      if (submittedCodeHash !== pendingCodeHash) {
+        throw new Error("Kitchen submit code is incorrect.");
+      }
     }
 
     const cartItems = await prisma.tableSessionItem.findMany({
@@ -507,6 +612,14 @@ export async function submitCartToKitchenAction(
 
       await tx.tableSessionItem.deleteMany({
         where: { tableSessionId: session.id },
+      });
+
+      await tx.tableSessionParticipant.update({
+        where: { id: participant.id },
+        data: {
+          phoneVerificationCodeHash: null,
+          phoneVerificationExpiresAt: null,
+        },
       });
 
       return createdOrder;

@@ -41,3 +41,21 @@ export function canTableAcceptOrders({
 }) {
   return sessionStatus === "OPEN" && Boolean(ownerPhoneVerifiedAt);
 }
+
+export function canSubmitKitchenOrder({
+  sessionStatus,
+  ownerPhoneVerifiedAt,
+  orderVerificationRequired,
+  hasPendingVerificationCode,
+}: {
+  sessionStatus: TableSessionStatusLike;
+  ownerPhoneVerifiedAt?: Date | string | null;
+  orderVerificationRequired: boolean;
+  hasPendingVerificationCode: boolean;
+}) {
+  if (!canTableAcceptOrders({ sessionStatus, ownerPhoneVerifiedAt })) {
+    return false;
+  }
+
+  return !orderVerificationRequired || hasPendingVerificationCode;
+}

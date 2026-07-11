@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   canParticipantRequestOwnerVerification,
+  canSubmitKitchenOrder,
   canTableAcceptOrders,
   isSixDigitVerificationCode,
   isValidAttendeeCount,
@@ -79,5 +80,36 @@ describe("table owner verification", () => {
     expect(isSixDigitVerificationCode("12345")).toBe(false);
     expect(isSixDigitVerificationCode("1234567")).toBe(false);
     expect(isSixDigitVerificationCode("12a456")).toBe(false);
+  });
+
+  it("requires a fresh pending verification code before kitchen submit", () => {
+    expect(
+      canSubmitKitchenOrder({
+        sessionStatus: "OPEN",
+        ownerPhoneVerifiedAt: new Date("2026-07-09T12:00:00Z"),
+        orderVerificationRequired: true,
+        hasPendingVerificationCode: false,
+      }),
+    ).toBe(false);
+
+    expect(
+      canSubmitKitchenOrder({
+        sessionStatus: "OPEN",
+        ownerPhoneVerifiedAt: new Date("2026-07-09T12:00:00Z"),
+        orderVerificationRequired: true,
+        hasPendingVerificationCode: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("allows kitchen submit without per-order code when owner disables it", () => {
+    expect(
+      canSubmitKitchenOrder({
+        sessionStatus: "OPEN",
+        ownerPhoneVerifiedAt: new Date("2026-07-09T12:00:00Z"),
+        orderVerificationRequired: false,
+        hasPendingVerificationCode: false,
+      }),
+    ).toBe(true);
   });
 });
