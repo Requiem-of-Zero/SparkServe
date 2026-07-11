@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTableIdentity } from "./table-identity-context";
 import { tableSocket } from "./table-socket";
 
@@ -29,10 +29,16 @@ export function TableSessionItemQuantityControls({
   const { canOrder, displayName, isReady } = useTableIdentity();
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasMounted, setHasMounted] = useState(false);
+  const controlsReady = hasMounted && isReady;
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   function adjustItem(eventName: "cart:increment-item" | "cart:decrement-item") {
     // The shared cart stays locked until the table owner verifies the session.
-    if (!isReady || !canOrder) {
+    if (!controlsReady || !canOrder) {
       setError("Waiting for the table owner to confirm this session.");
       return;
     }
@@ -70,7 +76,7 @@ export function TableSessionItemQuantityControls({
         <button
           type="button"
           onClick={() => adjustItem("cart:decrement-item")}
-          disabled={isUpdating || !isReady || !canOrder}
+          disabled={hasMounted ? isUpdating || !isReady || !canOrder : false}
           className="h-9 w-9 text-sm font-semibold text-zinc-200 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
           aria-label="Decrease item quantity"
         >
@@ -80,7 +86,7 @@ export function TableSessionItemQuantityControls({
         <button
           type="button"
           onClick={() => adjustItem("cart:increment-item")}
-          disabled={isUpdating || !isReady || !canOrder}
+          disabled={hasMounted ? isUpdating || !isReady || !canOrder : false}
           className="h-9 w-9 text-sm font-semibold text-zinc-200 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
           aria-label="Increase item quantity"
         >
@@ -88,7 +94,7 @@ export function TableSessionItemQuantityControls({
         </button>
       </div>
 
-      {isReady && !canOrder ? (
+      {controlsReady && !canOrder ? (
         <p className="mt-1 text-xs text-amber-300">Owner confirmation needed.</p>
       ) : null}
 

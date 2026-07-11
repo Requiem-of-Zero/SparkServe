@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   requestKitchenOrderCodeAction,
@@ -32,8 +32,14 @@ export function SubmitCartToKitchenButton({
     submitCartToKitchenAction,
     initialState,
   );
+  const [hasMounted, setHasMounted] = useState(false);
   const isOwner = participantRole === "OWNER";
-  const canSubmit = isReady && canOrder && isOwner && Boolean(participantPublicId);
+  const canSubmit =
+    hasMounted && isReady && canOrder && isOwner && Boolean(participantPublicId);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   useEffect(() => {
     if (submitState.status === "submitted") {
