@@ -34,6 +34,7 @@ resource "local_sensitive_file" "restaurant_env" {
       secret_key           = ""
       publishable_key      = ""
       connected_account_id = ""
+      webhook_secret       = ""
     })
   })
 }

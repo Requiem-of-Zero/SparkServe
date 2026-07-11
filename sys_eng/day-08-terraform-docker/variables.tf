@@ -53,6 +53,7 @@ variable "restaurant_stripe" {
     secret_key           = string
     publishable_key      = string
     connected_account_id = optional(string, "")
+    webhook_secret       = optional(string, "")
   }))
   sensitive = true
   default   = {}
