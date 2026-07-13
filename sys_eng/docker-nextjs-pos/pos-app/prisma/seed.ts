@@ -21,6 +21,16 @@ const prisma = new PrismaClient({
 
 const demoPassword = "abc12345";
 
+// Ember's fallback restaurant palette. Owners can override these later, but
+// fresh local/demo restaurants should immediately feel like the Ember brand.
+const emberDefaultTheme = {
+  logoUrl: "/brand/ember-logo-transparent.png",
+  primaryColor: "#ff6a1a",
+  accentColor: "#ffd166",
+  backgroundColor: "#100b0b",
+  textColor: "#fff7ed",
+};
+
 const demoMenuItems = [
   {
     id: 1,
@@ -423,6 +433,7 @@ async function main() {
       publicUrl: "http://localhost:8080",
       receiptFooter: "Thank you for visiting Big Fish House.",
       supportedLocales: ["en", "es"],
+      ...emberDefaultTheme,
     },
     create: {
       id: 1,
@@ -430,6 +441,7 @@ async function main() {
       publicUrl: "http://localhost:8080",
       receiptFooter: "Thank you for visiting Big Fish House.",
       supportedLocales: ["en", "es"],
+      ...emberDefaultTheme,
     },
   });
 

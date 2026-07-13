@@ -3,10 +3,10 @@ model RestaurantSettings {
   name             String
   publicUrl        String?
   logoUrl          String?
-  primaryColor     String   @default("#0f766e")
-  accentColor      String   @default("#f97316")
-  backgroundColor  String   @default("#0a0a0a")
-  textColor        String   @default("#ffffff")
+  primaryColor     String   @default("#ff6a1a")
+  accentColor      String   @default("#ffd166")
+  backgroundColor  String   @default("#100b0b")
+  textColor        String   @default("#fff7ed")
   receiptFooter    String?
   taxRate          Decimal  @default(0)
   currency         String   @default("USD")
