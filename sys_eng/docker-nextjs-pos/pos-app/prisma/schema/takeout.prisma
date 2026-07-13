@@ -1,0 +1,47 @@
+/// One-customer takeout cart/order session. This stays separate from
+/// TableSession because takeout does not need shared table ownership,
+/// attendee counts, or per-order owner verification.
+model TakeoutSession {
+  id          Int                  @id @default(autoincrement())
+  publicToken String               @unique
+  userId      String?
+  guestName   String?
+  phone       String?
+  status      TakeoutSessionStatus @default(OPEN)
+
+  createdAt   DateTime  @default(now())
+  submittedAt DateTime?
+  paidAt      DateTime?
+  cancelledAt DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  items TakeoutSessionItem[]
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+}
+
+/// Current takeout cart line before it becomes a receipt-safe OrderItem.
+model TakeoutSessionItem {
+  id               Int @id @default(autoincrement())
+  takeoutSessionId Int
+  menuItemId       Int
+  quantity         Int @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  takeoutSession TakeoutSession @relation(fields: [takeoutSessionId], references: [id], onDelete: Cascade)
+  menuItem       MenuItem       @relation(fields: [menuItemId], references: [id])
+
+  @@unique([takeoutSessionId, menuItemId])
+  @@index([menuItemId])
+}
+
+enum TakeoutSessionStatus {
+  OPEN
+  SUBMITTED
+  READY
+  PAID
+  CANCELLED
+}
