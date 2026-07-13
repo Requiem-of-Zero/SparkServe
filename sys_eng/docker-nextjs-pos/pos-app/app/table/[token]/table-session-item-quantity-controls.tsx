@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTableIdentity } from "./table-identity-context";
 import { tableSocket } from "./table-socket";
 
@@ -29,16 +29,10 @@ export function TableSessionItemQuantityControls({
   const { canOrder, displayName, isReady } = useTableIdentity();
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasMounted, setHasMounted] = useState(false);
-  const controlsReady = hasMounted && isReady;
-
-  useEffect(() => {
-    setHasMounted(true);
-  }, []);
 
   function adjustItem(eventName: "cart:increment-item" | "cart:decrement-item") {
     // The shared cart stays locked until the table owner verifies the session.
-    if (!controlsReady || !canOrder) {
+    if (!isReady || !canOrder) {
       setError("Waiting for the table owner to confirm this session.");
       return;
     }
@@ -76,7 +70,8 @@ export function TableSessionItemQuantityControls({
         <button
           type="button"
           onClick={() => adjustItem("cart:decrement-item")}
-          disabled={hasMounted ? isUpdating || !isReady || !canOrder : false}
+          disabled={isUpdating || !isReady || !canOrder}
+          suppressHydrationWarning
           className="h-9 w-9 text-sm font-semibold text-zinc-200 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
           aria-label="Decrease item quantity"
         >
@@ -86,7 +81,8 @@ export function TableSessionItemQuantityControls({
         <button
           type="button"
           onClick={() => adjustItem("cart:increment-item")}
-          disabled={hasMounted ? isUpdating || !isReady || !canOrder : false}
+          disabled={isUpdating || !isReady || !canOrder}
+          suppressHydrationWarning
           className="h-9 w-9 text-sm font-semibold text-zinc-200 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
           aria-label="Increase item quantity"
         >
@@ -94,7 +90,7 @@ export function TableSessionItemQuantityControls({
         </button>
       </div>
 
-      {controlsReady && !canOrder ? (
+      {isReady && !canOrder ? (
         <p className="mt-1 text-xs text-amber-300">Owner confirmation needed.</p>
       ) : null}
 

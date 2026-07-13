@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTableIdentity } from "./table-identity-context";
 import { tableSocket } from "./table-socket";
 
@@ -18,12 +18,6 @@ export function AddMenuItemButton({
   const [isAdding, setIsAdding] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [error, setError] = useState<string | null>(null);
-  const [hasMounted, setHasMounted] = useState(false);
-  const controlsReady = hasMounted && isReady;
-
-  useEffect(() => {
-    setHasMounted(true);
-  }, []);
 
   function changeQuantity(nextQuantity: number) {
     setQuantity(Math.min(20, Math.max(1, nextQuantity)));
@@ -31,7 +25,7 @@ export function AddMenuItemButton({
 
   function addItem() {
     // Guests cannot order until the owner confirms attendee count and phone.
-    if (!controlsReady || !canOrder) {
+    if (!isReady || !canOrder) {
       setError("Waiting for the table owner to confirm this session.");
       return;
     }
@@ -90,14 +84,15 @@ export function AddMenuItemButton({
         <button
           type="button"
           onClick={addItem}
-          disabled={hasMounted ? isAdding || !isReady || !canOrder : false}
+          disabled={isAdding || !isReady || !canOrder}
+          suppressHydrationWarning
           className="h-9 rounded-md bg-emerald-500 px-3 text-sm font-semibold text-zinc-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70"
         >
           {isAdding ? "Adding..." : "Add"}
         </button>
       </div>
 
-      {controlsReady && !canOrder ? (
+      {isReady && !canOrder ? (
         <p className="text-xs text-amber-300">
           Waiting for table owner confirmation.
         </p>
