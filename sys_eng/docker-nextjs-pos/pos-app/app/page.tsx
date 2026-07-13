@@ -1,93 +1,91 @@
 import Link from "next/link";
 
-const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Big Fish House";
+import { EmberMark } from "@/app/components/ember-mark";
+import { prisma } from "@/lib/prisma";
 
-const featuredItems = [
-  {
-    name: "Beef Noodle Soup",
-    description: "Slow-braised beef, spring onions, and warm broth.",
-    price: "$13.99",
-    image:
-      "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=900&q=80",
-  },
-  {
-    name: "Crispy Dumplings",
-    description: "Pan-seared dumplings with house chili crisp.",
-    price: "$8.99",
-    image:
-      "https://images.unsplash.com/photo-1496116218417-1a781b1c416c?auto=format&fit=crop&w=900&q=80",
-  },
-  {
-    name: "Milk Tea",
-    description: "Cold black tea, milk, and brown sugar.",
-    price: "$4.99",
-    image:
-      "https://images.unsplash.com/photo-1558857563-b371033873b8?auto=format&fit=crop&w=900&q=80",
-  },
-];
+const platformName = "Ember";
 
-export default function Home() {
+function formatPrice(priceCents: number) {
+  return `$${(priceCents / 100).toFixed(2)}`;
+}
+
+// Customer storefront for the restaurant using Ember. Takeout has its own
+// private cart flow, while dine-in ordering still uses table-session QR links.
+export default async function Home() {
+  const restaurant = await prisma.restaurantSettings.findUnique({
+    where: { id: 1 },
+  });
+  const menuItems = await prisma.menuItem.findMany({
+    where: { active: true },
+    orderBy: { sortOrder: "asc" },
+    take: 6,
+    include: {
+      translations: {
+        where: { locale: restaurant?.defaultLocale ?? "en" },
+      },
+    },
+  });
+  const restaurantName = restaurant?.name ?? "Big Fish House";
+
   return (
-    <main className="min-h-screen bg-stone-950 text-white">
-      <section className="relative min-h-[82vh] overflow-hidden">
+    <main className="min-h-screen bg-[#100b0b] text-[#fff7ed]">
+      <section className="relative overflow-hidden border-b border-orange-950/60">
         <img
           src="https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1800&q=80"
-          alt="Warm restaurant dining room"
-          className="absolute inset-0 h-full w-full object-cover"
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover opacity-40"
         />
-        <div className="absolute inset-0 bg-black/55" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#100b0b]/45 via-[#100b0b]/80 to-[#100b0b]" />
 
-        <div className="relative mx-auto flex min-h-[82vh] max-w-6xl flex-col px-6 py-6">
-          <nav className="flex flex-wrap items-center justify-between gap-3">
-            <Link href="/" className="text-xl font-bold">
-              {appName}
+        <div className="relative mx-auto flex min-h-[78vh] max-w-6xl flex-col px-5 py-5">
+          <nav className="flex items-center justify-between gap-3">
+            <Link
+              href="/"
+              className="flex items-center gap-3 text-xl font-bold tracking-wide"
+            >
+              <EmberMark className="h-9 w-9" />
+              <span>{platformName}</span>
             </Link>
-            <div className="flex flex-wrap gap-2 text-sm">
+            <div className="flex gap-2 text-sm">
               <Link
                 href="/customer/login"
-                className="rounded-md border border-white/30 px-3 py-2 hover:bg-white/10"
+                className="rounded-md border border-orange-200/25 px-3 py-2 hover:bg-orange-100/10"
               >
-                Member Login
+                Member
               </Link>
               <Link
                 href="/admin/login"
-                className="rounded-md border border-white/30 px-3 py-2 hover:bg-white/10"
+                className="rounded-md border border-orange-200/25 px-3 py-2 hover:bg-orange-100/10"
               >
                 Owner
-              </Link>
-              <Link
-                href="/login"
-                className="rounded-md border border-white/30 px-3 py-2 hover:bg-white/10"
-              >
-                Staff
               </Link>
             </div>
           </nav>
 
-          <div className="flex flex-1 items-center">
-            <div className="max-w-2xl py-16">
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-300">
-                Fresh bowls, fast tables, real rewards
+          <div className="flex flex-1 items-end pb-10">
+            <div className="max-w-2xl">
+              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#ffd166]">
+                {restaurantName}
               </p>
-              <h1 className="mt-5 text-5xl font-bold leading-tight md:text-7xl">
-                Dinner that remembers your favorites.
+              <h1 className="mt-4 text-5xl font-bold leading-tight md:text-7xl">
+                Order fresh takeout with Ember.
               </h1>
               <p className="mt-5 max-w-xl text-lg text-zinc-200">
-                Order at the table, save loyalty points, and unlock member-only
-                menu rewards each time you visit.
+                Browse the menu, build a shared cart, and check out with card.
+                Members can sign in for rewards while guests can order fast.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link
-                  href="/customer/signup"
-                  className="rounded-md bg-emerald-400 px-5 py-3 font-semibold text-zinc-950 hover:bg-emerald-300"
+                  href="/takeout"
+                  className="rounded-md bg-[#ff6a1a] px-5 py-3 font-semibold text-[#160b08] shadow-[0_0_28px_rgba(255,106,26,0.3)] hover:bg-[#ffd166]"
                 >
-                  Join Rewards
+                  Start takeout order
                 </Link>
                 <Link
-                  href="#menu"
-                  className="rounded-md border border-white/40 px-5 py-3 font-semibold hover:bg-white/10"
+                  href="/menu"
+                  className="rounded-md border border-orange-200/35 px-5 py-3 font-semibold hover:bg-orange-100/10"
                 >
-                  View Menu
+                  View menu
                 </Link>
               </div>
             </div>
@@ -95,67 +93,86 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="border-y border-stone-800 bg-stone-900 px-6 py-8">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <section className="border-b border-orange-950/60 bg-[#1a0f0b] px-5 py-7">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-2xl font-bold">Join once. Start saving today.</h2>
-            <p className="mt-2 max-w-2xl text-stone-300">
-              Creating an account automatically makes you a loyalty rewards
-              member, so paid orders can start building points toward selected
-              reward items.
+            <h2 className="text-2xl font-bold">Rewards are built in.</h2>
+            <p className="mt-2 max-w-2xl text-zinc-300">
+              Create an account once and Ember can connect future paid orders to
+              loyalty points, member history, and restaurant rewards.
             </p>
           </div>
           <Link
             href="/customer/signup"
-            className="inline-flex rounded-md bg-emerald-400 px-5 py-3 font-semibold text-zinc-950 hover:bg-emerald-300"
+            className="inline-flex rounded-md border border-[#ffd166] px-5 py-3 font-semibold text-[#ffd166] hover:bg-[#2a150d]"
           >
-            Create Member Account
+            Join rewards
           </Link>
         </div>
       </section>
 
-      <section id="menu" className="px-6 py-14">
+      <section id="menu" className="px-5 py-12">
         <div className="mx-auto max-w-6xl">
-          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div className="flex items-end justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-300">
-                Featured menu
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#ffd166]">
+                Menu
               </p>
-              <h2 className="mt-3 text-3xl font-bold">House favorites</h2>
+              <h2 className="mt-3 text-3xl font-bold">Order favorites</h2>
             </div>
             <Link
-              href="/customer/login"
-              className="text-sm font-semibold text-emerald-300 hover:text-emerald-200"
+              href="/takeout"
+              className="hidden rounded-md bg-[#ff6a1a] px-4 py-2 text-sm font-semibold text-[#160b08] hover:bg-[#ffd166] sm:inline-flex"
             >
-              Sign in to view rewards
+              Start order
             </Link>
           </div>
 
-          <div className="mt-8 grid gap-5 md:grid-cols-3">
-            {featuredItems.map((item) => (
-              <article
-                key={item.name}
-                className="overflow-hidden rounded-lg border border-stone-800 bg-stone-900"
-              >
-                <img
-                  src={item.image}
-                  alt={item.name}
-                  className="h-52 w-full object-cover"
-                />
-                <div className="p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <h3 className="text-xl font-semibold">{item.name}</h3>
-                    <span className="font-semibold text-emerald-300">
-                      {item.price}
-                    </span>
+          <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {menuItems.map((item) => {
+              const translation = item.translations[0];
+
+              return (
+                <article
+                  key={item.id}
+                  className="overflow-hidden rounded-lg border border-orange-950/60 bg-[#1a0f0b]"
+                >
+                  {item.imageUrl ? (
+                    <img
+                      src={item.imageUrl}
+                      alt=""
+                      className="h-44 w-full object-cover"
+                    />
+                  ) : null}
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="font-semibold">
+                        {translation?.name ?? `Menu item #${item.id}`}
+                      </h3>
+                      <span className="shrink-0 font-semibold text-[#ffd166]">
+                        {formatPrice(item.priceCents)}
+                      </span>
+                    </div>
+                    {translation?.description ? (
+                      <p className="mt-2 text-sm text-zinc-400">
+                        {translation.description}
+                      </p>
+                    ) : null}
+                    <p className="mt-3 text-xs uppercase tracking-wide text-zinc-500">
+                      {translation?.category ?? item.categoryKey ?? "Menu"}
+                    </p>
                   </div>
-                  <p className="mt-2 text-sm text-stone-300">
-                    {item.description}
-                  </p>
-                </div>
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </div>
+
+          <Link
+            href="/takeout"
+            className="mt-6 flex w-full justify-center rounded-md bg-[#ff6a1a] px-5 py-3 font-semibold text-[#160b08] hover:bg-[#ffd166] sm:hidden"
+          >
+            Start takeout order
+          </Link>
         </div>
       </section>
     </main>
