@@ -31,6 +31,11 @@ export type OwnershipTransferState = {
   status: "idle" | "requested" | "accepted" | "denied" | "error";
 };
 
+export type OrderSecurityState = {
+  message?: string;
+  status: "idle" | "updated" | "error";
+};
+
 export type SubmitKitchenState = {
   devCode?: string;
   message?: string;
@@ -309,8 +314,6 @@ export async function requestOwnerPhoneVerificationAction(
     );
     const phoneNumber = readRequiredString(formData, "phoneNumber");
     const attendeeCount = Number(formData.get("attendeeCount"));
-    const orderVerificationRequired =
-      formData.get("orderVerificationRequired") !== "off";
 
     if (!isValidAttendeeCount(attendeeCount)) {
       throw new Error("Attendee count must be between 1 and 99.");
@@ -327,10 +330,7 @@ export async function requestOwnerPhoneVerificationAction(
     await prisma.$transaction([
       prisma.tableSession.update({
         where: { id: session.id },
-        data: {
-          attendeeCount,
-          orderVerificationRequired,
-        },
+        data: { attendeeCount },
       }),
       prisma.tableSessionParticipant.update({
         where: { id: participant.id },
@@ -419,6 +419,47 @@ export async function verifyOwnerPhoneCodeAction(
   } catch (error) {
     return {
       message: error instanceof Error ? error.message : "Could not verify code.",
+      status: "error",
+    };
+  }
+}
+
+export async function updateOrderVerificationPreferenceAction(
+  _previousState: OrderSecurityState,
+  formData: FormData,
+): Promise<OrderSecurityState> {
+  try {
+    const token = readRequiredString(formData, "token");
+    const participantPublicId = readRequiredString(
+      formData,
+      "participantPublicId",
+    );
+    const orderVerificationRequired =
+      formData.get("orderVerificationRequired") === "on";
+    const { session } = await requireOwnerParticipant({
+      token,
+      participantPublicId,
+    });
+
+    await prisma.tableSession.update({
+      where: { id: session.id },
+      data: { orderVerificationRequired },
+    });
+
+    revalidatePath(`/table/${token}`);
+
+    return {
+      message: orderVerificationRequired
+        ? "Kitchen order codes are required."
+        : "Kitchen order codes are disabled for this table.",
+      status: "updated",
+    };
+  } catch (error) {
+    return {
+      message:
+        error instanceof Error
+          ? error.message
+          : "Could not update kitchen order security.",
       status: "error",
     };
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   requestKitchenOrderCodeAction,
@@ -32,14 +32,8 @@ export function SubmitCartToKitchenButton({
     submitCartToKitchenAction,
     initialState,
   );
-  const [hasMounted, setHasMounted] = useState(false);
   const isOwner = participantRole === "OWNER";
-  const canSubmit =
-    hasMounted && isReady && canOrder && isOwner && Boolean(participantPublicId);
-
-  useEffect(() => {
-    setHasMounted(true);
-  }, []);
+  const canSubmit = isReady && canOrder && isOwner && Boolean(participantPublicId);
 
   useEffect(() => {
     if (submitState.status === "submitted") {
@@ -60,6 +54,7 @@ export function SubmitCartToKitchenButton({
           <button
             type="submit"
             disabled={isRequestPending || !canSubmit}
+            suppressHydrationWarning
             className="w-full rounded-md border border-amber-500 px-4 py-2 text-sm font-semibold text-amber-100 hover:bg-amber-950 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isRequestPending ? "Sending code..." : "Send kitchen submit code"}
@@ -97,18 +92,20 @@ export function SubmitCartToKitchenButton({
           name="participantPublicId"
           value={participantPublicId ?? ""}
         />
-        <input
-          name="verificationCode"
-          inputMode="numeric"
-          maxLength={6}
-          placeholder="6-digit kitchen code"
-          className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-60"
-          disabled={!orderVerificationRequired}
-          required={orderVerificationRequired}
-        />
+        {orderVerificationRequired ? (
+          <input
+            name="verificationCode"
+            inputMode="numeric"
+            maxLength={6}
+            placeholder="6-digit kitchen code"
+            className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white"
+            required
+          />
+        ) : null}
         <button
           type="submit"
           disabled={isSubmitPending || !canSubmit}
+          suppressHydrationWarning
           className="w-full rounded-md bg-amber-400 px-4 py-3 text-sm font-semibold text-zinc-950 hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isSubmitPending ? "Sending..." : "Send cart to kitchen"}

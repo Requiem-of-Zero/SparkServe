@@ -11,6 +11,7 @@ import { TableLiveClient } from "./table-live-client";
 import { TableMenuSection } from "./table-menu-section";
 import { TableOwnershipTransferPanel } from "./table-ownership-transfer-panel";
 import { TableOwnerSetupPanel } from "./table-owner-setup-panel";
+import { TableOrderSecurityPanel } from "./table-order-security-panel";
 import { TableSessionItemQuantityControls } from "./table-session-item-quantity-controls";
 import { SubmitCartToKitchenButton } from "./submit-cart-to-kitchen-button";
 import { CheckoutButton } from "./checkout-button";
@@ -142,7 +143,8 @@ export default async function TableSessionPage({
 
           <p className="mt-2 text-zinc-400">Session status: {session.status}</p>
           <TableLiveClient token={token} />
-          <TableOwnerSetupPanel
+          <TableOwnerSetupPanel token={token} />
+          <TableOrderSecurityPanel
             token={token}
             orderVerificationRequired={session.orderVerificationRequired}
           />

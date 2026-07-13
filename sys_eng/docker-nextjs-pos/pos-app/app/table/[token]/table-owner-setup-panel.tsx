@@ -19,10 +19,8 @@ const initialState: OwnerVerificationState = {
 // submitted. SMS is stubbed with a dev code until a provider is wired in.
 export function TableOwnerSetupPanel({
   token,
-  orderVerificationRequired,
 }: {
   token: string;
-  orderVerificationRequired: boolean;
 }) {
   const router = useRouter();
   const { canOrder, participantPublicId, participantRole } = useTableIdentity();
@@ -121,25 +119,6 @@ export function TableOwnerSetupPanel({
         >
           {isRequestPending ? "Sending..." : "Send verification code"}
         </button>
-
-        <label className="flex items-start gap-3 rounded-md border border-amber-900/70 bg-zinc-950/60 p-3 sm:col-span-3">
-          <input
-            name="orderVerificationRequired"
-            type="checkbox"
-            value="on"
-            defaultChecked={orderVerificationRequired}
-            className="mt-1 h-4 w-4 rounded border-zinc-600 bg-zinc-950"
-          />
-          <span>
-            <span className="block text-sm font-medium text-amber-100">
-              Require 6-digit approval for each kitchen order
-            </span>
-            <span className="mt-1 block text-xs text-zinc-400">
-              Uncheck for faster ordering. Keeping it on is safer if QR links may
-              be shared outside the table.
-            </span>
-          </span>
-        </label>
       </form>
 
       {requestState.message ? (
