@@ -8,6 +8,7 @@ import {
   PaymentMethod,
   PaymentProvider,
   PaymentStatus,
+  PaymentTransactionType,
 } from "@/lib/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
@@ -130,7 +131,9 @@ export async function POST(request: NextRequest, { params }: StripeCheckoutRoute
     });
     const paymentIntentData: Stripe.Checkout.SessionCreateParams.PaymentIntentData =
       {
+        description: `Ember dine-in table checkout #${checkout.id}`,
         metadata: {
+          checkoutType: "dine_in",
           checkoutId: String(checkout.id),
           tableSessionId: String(tableSession.id),
           orderIds: orders.map((order) => order.id).join(","),
@@ -179,6 +182,7 @@ export async function POST(request: NextRequest, { params }: StripeCheckoutRoute
       ),
       payment_intent_data: paymentIntentData,
       metadata: {
+        checkoutType: "dine_in",
         checkoutId: String(checkout.id),
         tableSessionId: String(tableSession.id),
       },
@@ -202,6 +206,7 @@ export async function POST(request: NextRequest, { params }: StripeCheckoutRoute
           status: PaymentStatus.PENDING,
           method: PaymentMethod.CUSTOMER_ONLINE_CARD,
           provider: PaymentProvider.STRIPE,
+          transactionType: PaymentTransactionType.DINE_IN,
           amountCents: totals.totalCents,
           platformFeeCents: totals.platformFeeCents,
           providerPaymentId:

@@ -5,6 +5,7 @@ import {
   CheckoutStatus,
   OrderStatus,
   PaymentStatus,
+  PaymentTransactionType,
   TableSessionStatus,
 } from "@/lib/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
@@ -84,6 +85,29 @@ async function markCheckoutPaid(session: Stripe.Checkout.Session) {
   ]);
 }
 
+async function markTakeoutPaymentPaid(session: Stripe.Checkout.Session) {
+  if (session.payment_status !== "paid") {
+    return;
+  }
+
+  const paymentIntentId = getPaymentIntentId(session);
+  const paidAt = new Date();
+
+  await prisma.payment.updateMany({
+    where: {
+      transactionType: PaymentTransactionType.TAKEOUT,
+      providerPaymentId: {
+        in: [paymentIntentId, session.id].filter((id): id is string => Boolean(id)),
+      },
+    },
+    data: {
+      status: PaymentStatus.PAID,
+      paidAt,
+      providerPaymentId: paymentIntentId ?? session.id,
+    },
+  });
+}
+
 export async function POST(request: NextRequest) {
   const signature = request.headers.get("stripe-signature");
 
@@ -105,7 +129,11 @@ export async function POST(request: NextRequest) {
 
     switch (event.type) {
       case "checkout.session.completed":
-        await markCheckoutPaid(event.data.object as Stripe.Checkout.Session);
+        if (event.data.object.metadata?.checkoutType === "takeout") {
+          await markTakeoutPaymentPaid(event.data.object as Stripe.Checkout.Session);
+        } else {
+          await markCheckoutPaid(event.data.object as Stripe.Checkout.Session);
+        }
         break;
       default:
         break;

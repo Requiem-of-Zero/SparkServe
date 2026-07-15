@@ -57,12 +57,13 @@ model OrderItem {
 
 /// Payment attempt/result for an order, including provider and platform fee.
 model Payment {
-  id         Int             @id @default(autoincrement())
-  orderId    Int?
-  checkoutId Int?
-  status     PaymentStatus   @default(PENDING)
-  method     PaymentMethod
-  provider   PaymentProvider @default(NONE)
+  id              Int                    @id @default(autoincrement())
+  orderId         Int?
+  checkoutId      Int?
+  status          PaymentStatus          @default(PENDING)
+  method          PaymentMethod
+  provider        PaymentProvider        @default(NONE)
+  transactionType PaymentTransactionType @default(DINE_IN)
 
   amountCents       Int
   platformFeeCents  Int     @default(0)
@@ -81,6 +82,7 @@ model Payment {
 
   @@index([orderId, status])
   @@index([checkoutId, status])
+  @@index([transactionType, status])
   @@index([provider, providerPaymentId])
 }
 
@@ -160,6 +162,11 @@ enum PaymentMethod {
 enum PaymentProvider {
   NONE
   STRIPE
+}
+
+enum PaymentTransactionType {
+  DINE_IN
+  TAKEOUT
 }
 
 enum CheckoutStatus {
