@@ -21,6 +21,30 @@ local PostgreSQL database
 
 The same app code can be deployed to many restaurants, but each restaurant owns its own data and configuration.
 
+## Competitive Context
+
+Ember is being shaped as a lightweight, self-hostable restaurant ordering and POS platform for small restaurants that want modern QR ordering, takeout ordering, staff tools, and payments without adopting a large all-in-one vendor stack on day one.
+
+Compared with a mature platform like Chowbus, Ember already has the beginning of the same core product pillars:
+
+- restaurant storefront and takeout entry point
+- QR/table session ordering
+- shared table cart with realtime updates
+- customer/member login for loyalty
+- employee and owner authentication
+- table owner approval for shared ordering
+- Stripe checkout for dine-in and takeout flows
+- restaurant-controlled menu data, categories, images, and translations
+- self-hosted deployment model with local Postgres
+
+The gap is not the basic ordering idea anymore. The remaining gap is restaurant operations depth. Chowbus-like systems become valuable because staff can run the restaurant from them all day: kitchen display, order status, waitlist, table management, menu editing, reporting, refunds, hardware payments, and customer marketing.
+
+For a first restaurant sales pitch, Ember should aim to prove:
+
+```text
+customer orders -> kitchen sees it -> staff manages it -> customer pays -> owner can review sales
+```
+
 ## Users And Sessions
 
 Use clear business language:
@@ -286,6 +310,8 @@ Reward redemption should be validated server-side. A customer should not be able
 
 ## Build Order
 
+Build the restaurant operations loop before adding more polish. The early steps establish identity, menu data, QR sessions, realtime ordering, and checkout. After that, the sequence shifts into Chowbus-like restaurant operations: kitchen queue, staff dashboard, waitlist, floor view, admin controls, and reporting.
+
 ### 1. Prisma Foundation
 
 Install Prisma and create the initial schema.
@@ -301,7 +327,13 @@ Done when:
 - `prisma migrate` creates tables.
 - The app can query the database through Prisma.
 
-### 1.5 Multilanguage Menu Foundation
+Status:
+
+- Built.
+- Schema has been split into domain files under `prisma/schema`.
+- Local and Docker database workflows are understood.
+
+### 2. Multilanguage Menu Foundation
 
 Add the first customer-facing translation layer.
 
@@ -317,7 +349,13 @@ Done when:
 - A menu item can have English and one additional language translation.
 - The app can query menu items for a requested locale.
 
-### 2. Employee Authentication
+Status:
+
+- Built as a foundation.
+- Menu items have descriptions, categories, ingredients, images, and translation support.
+- Full app translation is still future work.
+
+### 3. Employee Authentication
 
 Add Better Auth.
 
@@ -336,7 +374,14 @@ Done when:
 - Anonymous users cannot access staff pages.
 - Staff identity is available to server actions that change orders, payments, menu items, or employees.
 
-### 3. Employee Admin
+Status:
+
+- Built.
+- Owner login uses email/password.
+- Employee login uses private 6-digit login codes.
+- Employee profiles store hire/resign dates and role data.
+
+### 4. Employee Admin
 
 Build the first owner/admin workflow.
 
@@ -358,7 +403,13 @@ Future improvement:
 - Add required password reset after first login.
 - Record employee management changes in `AuditEvent`.
 
-### 4. Menu Management
+Status:
+
+- Built as a basic admin workflow.
+- Owner can create employees and regenerate employee login codes.
+- More polished employee management and audit logs are still future work.
+
+### 5. Menu Management
 
 Build restaurant menu data.
 
@@ -373,7 +424,37 @@ Done when:
 
 - POS menu comes from Postgres instead of hardcoded arrays.
 
-### 5. Table And QR Flow
+Status:
+
+- Partly built.
+- Seeded menu data is in Postgres.
+- Customer-facing menu and takeout pages use database menu items.
+- Owner/admin menu editing is still needed.
+
+### 6. Customer Membership And Loyalty Foundation
+
+Build optional customer accounts and member identity.
+
+Focus:
+
+- Customer can sign up and log in through the customer portal.
+- Customer can use Google OAuth.
+- Customer account can be separate from employee authorization.
+- Homepage changes based on logged-in vs logged-out customer state.
+- Logged-in customers can see rewards/member entry points.
+
+Done when:
+
+- A customer can become a member without becoming an employee.
+- A logged-in customer can be recognized across storefront and ordering flows.
+
+Status:
+
+- Built as a foundation.
+- Google OAuth works locally when the origin matches OAuth settings.
+- Loyalty point earning and reward redemption still need the ledger/rules engine.
+
+### 7. Table And QR Flow
 
 Create customer entry points.
 
@@ -382,50 +463,218 @@ Focus:
 - Admin can create dining tables.
 - Each table has a unique QR token.
 - QR URL opens `/table/[code]`.
-- Opening QR creates or joins an active `CustomerSession`.
+- Opening QR creates or joins an active `TableSession`.
+- Device-specific participants can join the same table session.
+- First guest can become the table session owner.
 
 Done when:
 
 - A table can scan a QR code and see its current session.
 
-### 6. Ordering Flow
+Status:
+
+- Built.
+- QR table sessions exist.
+- Table participants and ownership exist.
+- Owner setup stores attendee count and owner phone verification state.
+
+### 8. Realtime Table Ordering Flow
 
 Build customer and staff order flow.
 
 Focus:
 
 - Customer can add items to a table order.
-- Staff can see active table orders.
-- Staff can add/remove items.
-- Staff can mark order states.
+- Customers at the same table see shared cart updates in realtime.
+- Table owner can require or disable 6-digit approval for each kitchen submission.
+- Table owner receives verification code prompts when order approval is required.
+- Submitted carts become accumulated orders for the final table receipt.
 
 Done when:
 
-- A table order can be created, updated, and viewed by staff.
+- A table order can be created, updated, submitted, and seen by every connected table participant without manual refresh.
 
-### 7. Checkout
+Status:
+
+- Mostly built.
+- Socket.IO table rooms work locally.
+- Shared cart add/remove/increment flows are built.
+- Kitchen submission exists.
+- Owner security toggle exists.
+- Kitchen-facing order queue is the next missing operations page.
+
+### 9. Takeout Ordering Flow
+
+Build non-table ordering for customers who want pickup.
+
+Focus:
+
+- Homepage starts a takeout order through `/takeout`.
+- Takeout cart is separate from table sessions.
+- Customer can add multiple quantities.
+- Takeout checkout uses the same Stripe foundation.
+- Takeout orders can later feed into the kitchen queue.
+
+Done when:
+
+- A customer can start a takeout cart, checkout, and create a kitchen-visible order.
+
+Status:
+
+- Partly built.
+- Takeout page and Stripe checkout route exist.
+- Persisting takeout sessions/orders as durable records still needs completion.
+
+### 10. Checkout And Payments
 
 Close the table lifecycle.
 
 Focus:
 
-- Staff can checkout a table.
-- Table session closes.
-- Order becomes historical.
-- QR link starts fresh session next time.
+- Customer can checkout with Stripe for dine-in.
+- Customer can checkout with Stripe for takeout.
+- Stripe webhook marks payments as paid.
+- Payments record whether the transaction is dine-in or takeout.
+- Platform fee support works for connected restaurant accounts.
+- Staff can eventually checkout a table with a reader/iPad.
 
 Done when:
 
-- A full table visit can start, order, and close.
+- A full table visit can start, order, submit to kitchen, checkout, and close.
+- A takeout order can start, checkout, submit to kitchen, and close.
 
-### 8. Customer Membership And Loyalty
+Status:
 
-Build optional customer accounts and rewards.
+- Partly built.
+- Stripe checkout is connected for dine-in and takeout.
+- Webhook handling exists.
+- Stripe Terminal/staff card reader flow is future work.
+- Final order closing and receipt/reporting polish are still needed.
+
+### 11. Kitchen Queue
+
+Build the first restaurant operations screen.
+
+Suggested routes:
+
+```text
+/kitchen
+/staff/kitchen
+```
 
 Focus:
 
-- Customer can sign up and log in through the customer portal.
-- Customer can attach their account to a table/order session.
+- Show newly submitted dine-in and takeout orders in a live queue.
+- Show table label or takeout customer name.
+- Show order number, submitted time, items, quantities, and notes.
+- Let kitchen mark orders as `IN_PROGRESS`, `READY`, and `COMPLETED`.
+- Broadcast order status changes back to table/takeout clients.
+
+Done when:
+
+- Sending a table cart to kitchen makes the order appear without refresh.
+- Takeout orders can appear in the same kitchen flow.
+- Customers and staff can see order status updates.
+
+### 12. Staff Orders Dashboard
+
+Build the staff operations hub.
+
+Suggested route:
+
+```text
+/staff/orders
+```
+
+Focus:
+
+- Show active table sessions.
+- Show submitted kitchen orders.
+- Show takeout orders.
+- Show payment status.
+- Let staff help checkout, close, or later void/refund orders.
+
+Done when:
+
+- A server or cashier can understand the current restaurant state without opening the database.
+
+### 13. Waitlist
+
+Build a host/waitlist flow based on table capacity.
+
+Suggested routes:
+
+```text
+/waitlist
+/staff/waitlist
+/display/waitlist
+```
+
+Focus:
+
+- Customer or host can add a party to the waitlist.
+- Staff can see party name, phone, party size, wait time, and status.
+- Staff can match parties to tables using `DiningTable.tableSize`.
+- Staff can notify a party when their table is ready.
+- Display page can show public queue updates in the restaurant.
+
+Done when:
+
+- Staff can seat a waitlist party at a suitable table.
+- The public display updates when a party is called.
+
+### 14. Table Floor View
+
+Build a table status board for employees.
+
+Suggested route:
+
+```text
+/staff/tables
+```
+
+Focus:
+
+- Show every table and its current status.
+- Status examples: `AVAILABLE`, `OCCUPIED`, `ORDERING`, `IN_KITCHEN`, `READY`, `WAITING_FOR_PAYMENT`.
+- Link each occupied table to its active table session and orders.
+- Link waitlist seating to table availability.
+
+Done when:
+
+- Staff can glance at one screen and understand the dining room.
+
+### 15. Admin Menu And Restaurant Settings
+
+Make the restaurant self-service for owners.
+
+Suggested routes:
+
+```text
+/admin/menu
+/admin/settings
+/admin/payments
+/admin/loyalty
+```
+
+Focus:
+
+- Edit menu items, categories, prices, photos, and availability.
+- Configure table layout and table capacity.
+- Configure Stripe connected account.
+- Configure restaurant theme, logo, and menu PDF.
+- Configure whether light/dark mode can be toggled by customers.
+
+Done when:
+
+- A restaurant owner can set up and modify the business basics from the UI.
+
+### 16. Loyalty Rules And Rewards
+
+Build the full rewards system on top of customer membership.
+
+Focus:
+
 - Owner/manager can configure points earned per dollar spent.
 - Owner/manager can mark selected menu items as loyalty rewards.
 - Customer can view points balance and available rewards.
@@ -438,7 +687,29 @@ Done when:
 - A customer can redeem points for an owner-selected reward item.
 - Owner/manager can alter the loyalty conversion rule without code changes.
 
-### 9. Backups
+### 17. Reports And CSV Exports
+
+Create simple business reporting before advanced analytics.
+
+Suggested route:
+
+```text
+/admin/reports
+```
+
+Focus:
+
+- Daily and monthly sales totals.
+- Dine-in vs takeout sales.
+- Platform fees and payment fees.
+- Top menu items.
+- CSV exports by month and year.
+
+Done when:
+
+- A restaurant owner can review sales without using Stripe or the database directly.
+
+### 18. Backups
 
 Protect restaurant data.
 
@@ -453,7 +724,7 @@ Done when:
 
 - A restaurant database can be backed up and restored safely.
 
-### 10. Monitoring And Hardening
+### 19. Monitoring And Hardening
 
 Improve operations after core app works.
 
