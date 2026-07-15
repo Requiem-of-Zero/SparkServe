@@ -21,6 +21,11 @@ function formatPrice(priceCents: number) {
   return `$${(priceCents / 100).toFixed(2)}`;
 }
 
+type CheckoutResponse = {
+  message?: string;
+  url?: string;
+};
+
 // Customer takeout cart. This is intentionally not tied to table-session
 // sockets because takeout is a private cart for one customer.
 export function TakeoutOrderClient({
@@ -30,6 +35,9 @@ export function TakeoutOrderClient({
 }) {
   const [activeCategory, setActiveCategory] = useState("all");
   const [cartLines, setCartLines] = useState<TakeoutCartLine[]>([]);
+  const [itemQuantities, setItemQuantities] = useState<Record<number, number>>({});
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const categories = useMemo(() => {
     const categoryMap = new Map<string, string>();
 
@@ -45,14 +53,30 @@ export function TakeoutOrderClient({
       : menuItems.filter((item) => (item.categoryKey ?? "menu") === activeCategory);
   const subtotalCents = calculateTakeoutSubtotalCents(cartLines);
 
+  function getSelectedQuantity(menuItemId: number) {
+    return itemQuantities[menuItemId] ?? 1;
+  }
+
+  function changeSelectedQuantity(menuItemId: number, nextQuantity: number) {
+    setItemQuantities((currentQuantities) => ({
+      ...currentQuantities,
+      [menuItemId]: Math.min(20, Math.max(1, nextQuantity)),
+    }));
+  }
+
   function addItem(item: TakeoutMenuItem) {
+    const quantityToAdd = getSelectedQuantity(item.id);
+
     setCartLines((currentLines) => {
       const existingLine = currentLines.find((line) => line.menuItemId === item.id);
 
       if (existingLine) {
         return currentLines.map((line) =>
           line.menuItemId === item.id
-            ? { ...line, quantity: Math.min(line.quantity + 1, 20) }
+            ? {
+                ...line,
+                quantity: Math.min(line.quantity + quantityToAdd, 20),
+              }
             : line,
         );
       }
@@ -63,7 +87,7 @@ export function TakeoutOrderClient({
           menuItemId: item.id,
           name: item.name,
           priceCents: item.priceCents,
-          quantity: 1,
+          quantity: quantityToAdd,
         },
       ];
     });
@@ -83,6 +107,41 @@ export function TakeoutOrderClient({
         return [{ ...line, quantity: Math.min(nextQuantity, 20) }];
       }),
     );
+  }
+
+  async function startCheckout() {
+    setIsCheckingOut(true);
+    setCheckoutError(null);
+
+    try {
+      const response = await fetch("/api/takeout/checkout/stripe-session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          items: cartLines.map((line) => ({
+            menuItemId: line.menuItemId,
+            quantity: line.quantity,
+          })),
+        }),
+      });
+      const data = (await response.json()) as CheckoutResponse;
+
+      if (!response.ok || !data.url) {
+        throw new Error(data.message ?? "Could not start takeout checkout.");
+      }
+
+      window.location.href = data.url;
+    } catch (error) {
+      setCheckoutError(
+        error instanceof Error
+          ? error.message
+          : "Could not start takeout checkout.",
+      );
+    } finally {
+      setIsCheckingOut(false);
+    }
   }
 
   return (
@@ -157,7 +216,38 @@ export function TakeoutOrderClient({
                   </p>
                 </div>
 
-                <div className="mt-3 flex justify-end">
+                <div className="mt-3 flex items-center justify-end gap-2">
+                  <div className="flex h-9 items-center rounded-md border border-orange-200/25">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        changeSelectedQuantity(
+                          item.id,
+                          getSelectedQuantity(item.id) - 1,
+                        )
+                      }
+                      className="h-9 w-9 text-sm font-semibold hover:bg-orange-100/10"
+                      aria-label={`Decrease ${item.name} quantity`}
+                    >
+                      -
+                    </button>
+                    <span className="w-8 text-center text-sm">
+                      {getSelectedQuantity(item.id)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        changeSelectedQuantity(
+                          item.id,
+                          getSelectedQuantity(item.id) + 1,
+                        )
+                      }
+                      className="h-9 w-9 text-sm font-semibold hover:bg-orange-100/10"
+                      aria-label={`Increase ${item.name} quantity`}
+                    >
+                      +
+                    </button>
+                  </div>
                   <button
                     type="button"
                     onClick={() => addItem(item)}
@@ -231,14 +321,18 @@ export function TakeoutOrderClient({
           </div>
           <button
             type="button"
-            disabled={cartLines.length === 0}
+            onClick={startCheckout}
+            disabled={cartLines.length === 0 || isCheckingOut}
             className="mt-4 w-full rounded-md bg-[#ff6a1a] px-4 py-3 font-semibold text-[#160b08] hover:bg-[#ffd166] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Continue to checkout
+            {isCheckingOut ? "Opening checkout..." : "Continue to checkout"}
           </button>
+          {checkoutError ? (
+            <p className="mt-3 text-xs text-red-300">{checkoutError}</p>
+          ) : null}
           <p className="mt-3 text-xs text-zinc-500">
-            Checkout will persist this as a takeout session next, separate from
-            table QR sessions.
+            Takeout checkout is private to this cart and separate from table QR
+            sessions.
           </p>
         </div>
       </aside>

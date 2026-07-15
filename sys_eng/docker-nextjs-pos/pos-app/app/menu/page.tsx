@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { EmberMark } from "@/app/components/ember-mark";
+import { SiteFooter } from "@/app/components/site-footer";
 import { prisma } from "@/lib/prisma";
 
 // Public restaurant menu viewer. For now this uses a demo PDF asset; later the
@@ -57,6 +58,8 @@ export default async function MenuPage() {
           </object>
         </div>
       </div>
+
+      <SiteFooter restaurantName={restaurant?.name} />
     </main>
   );
 }

@@ -1,6 +1,8 @@
 import Link from "next/link";
 
 import { EmberMark } from "@/app/components/ember-mark";
+import { SiteFooter } from "@/app/components/site-footer";
+import { getCurrentSession } from "@/lib/employee-auth";
 import { prisma } from "@/lib/prisma";
 
 const platformName = "Ember";
@@ -12,6 +14,7 @@ function formatPrice(priceCents: number) {
 // Customer storefront for the restaurant using Ember. Takeout has its own
 // private cart flow, while dine-in ordering still uses table-session QR links.
 export default async function Home() {
+  const session = await getCurrentSession();
   const restaurant = await prisma.restaurantSettings.findUnique({
     where: { id: 1 },
   });
@@ -25,7 +28,23 @@ export default async function Home() {
       },
     },
   });
+  const [customerProfile, employeeProfile] = session?.user
+    ? await Promise.all([
+        prisma.customerProfile.findUnique({
+          where: { userId: session.user.id },
+        }),
+        prisma.employeeProfile.findUnique({
+          where: { userId: session.user.id },
+        }),
+      ])
+    : [null, null];
   const restaurantName = restaurant?.name ?? "Big Fish House";
+  const displayName =
+    customerProfile?.displayName ??
+    session?.user.displayUsername ??
+    session?.user.name ??
+    session?.user.email;
+  const isLoggedIn = Boolean(session?.user);
 
   return (
     <main className="min-h-screen bg-[#100b0b] text-[#fff7ed]">
@@ -47,18 +66,39 @@ export default async function Home() {
               <span>{platformName}</span>
             </Link>
             <div className="flex gap-2 text-sm">
-              <Link
-                href="/customer/login"
-                className="rounded-md border border-orange-200/25 px-3 py-2 hover:bg-orange-100/10"
-              >
-                Member
-              </Link>
-              <Link
-                href="/admin/login"
-                className="rounded-md border border-orange-200/25 px-3 py-2 hover:bg-orange-100/10"
-              >
-                Owner
-              </Link>
+              {isLoggedIn ? (
+                <>
+                  <Link
+                    href="/customer/account"
+                    className="rounded-md border border-orange-200/25 px-3 py-2 hover:bg-orange-100/10"
+                  >
+                    {displayName}
+                  </Link>
+                  {employeeProfile?.role === "OWNER" ? (
+                    <Link
+                      href="/admin/employees"
+                      className="rounded-md border border-orange-200/25 px-3 py-2 hover:bg-orange-100/10"
+                    >
+                      Owner
+                    </Link>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/customer/login"
+                    className="rounded-md border border-orange-200/25 px-3 py-2 hover:bg-orange-100/10"
+                  >
+                    Member
+                  </Link>
+                  <Link
+                    href="/admin/login"
+                    className="rounded-md border border-orange-200/25 px-3 py-2 hover:bg-orange-100/10"
+                  >
+                    Owner
+                  </Link>
+                </>
+              )}
             </div>
           </nav>
 
@@ -96,17 +136,25 @@ export default async function Home() {
       <section className="border-b border-orange-950/60 bg-[#1a0f0b] px-5 py-7">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-2xl font-bold">Rewards are built in.</h2>
+            <h2 className="text-2xl font-bold">
+              {isLoggedIn ? "Your rewards are ready." : "Rewards are built in."}
+            </h2>
             <p className="mt-2 max-w-2xl text-zinc-300">
-              Create an account once and Ember can connect future paid orders to
-              loyalty points, member history, and restaurant rewards.
+              {isLoggedIn
+                ? `Welcome back${displayName ? `, ${displayName}` : ""}. Ember can connect paid orders to loyalty points, member history, and restaurant rewards.`
+                : "Create an account once and Ember can connect future paid orders to loyalty points, member history, and restaurant rewards."}
             </p>
+            {customerProfile ? (
+              <p className="mt-3 text-sm font-semibold text-[#ffd166]">
+                Current points: {customerProfile.loyaltyPointsBalance}
+              </p>
+            ) : null}
           </div>
           <Link
-            href="/customer/signup"
+            href={isLoggedIn ? "/customer/account" : "/customer/signup"}
             className="inline-flex rounded-md border border-[#ffd166] px-5 py-3 font-semibold text-[#ffd166] hover:bg-[#2a150d]"
           >
-            Join rewards
+            {isLoggedIn ? "View rewards" : "Join rewards"}
           </Link>
         </div>
       </section>
@@ -175,6 +223,8 @@ export default async function Home() {
           </Link>
         </div>
       </section>
+
+      <SiteFooter restaurantName={restaurantName} />
     </main>
   );
 }

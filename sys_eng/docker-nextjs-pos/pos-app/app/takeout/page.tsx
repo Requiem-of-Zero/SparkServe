@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { EmberMark } from "@/app/components/ember-mark";
+import { SiteFooter } from "@/app/components/site-footer";
 import { prisma } from "@/lib/prisma";
 
 import { TakeoutOrderClient } from "./takeout-order-client";
@@ -64,6 +65,7 @@ export default async function TakeoutPage() {
       </section>
 
       <TakeoutOrderClient menuItems={takeoutMenuItems} />
+      <SiteFooter restaurantName={restaurant?.name} />
     </main>
   );
 }
