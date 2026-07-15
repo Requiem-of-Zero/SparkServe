@@ -312,7 +312,14 @@ Reward redemption should be validated server-side. A customer should not be able
 
 Build the restaurant operations loop before adding more polish. The early steps establish identity, menu data, QR sessions, realtime ordering, and checkout. After that, the sequence shifts into Chowbus-like restaurant operations: kitchen queue, staff dashboard, waitlist, floor view, admin controls, and reporting.
 
-### 1. Prisma Foundation
+Status key:
+
+- ✅ Done
+- 🟡 In progress
+- ⬜ Not started
+- 🔮 Later
+
+### ✅ 1. Prisma Foundation
 
 Install Prisma and create the initial schema.
 
@@ -327,13 +334,13 @@ Done when:
 - `prisma migrate` creates tables.
 - The app can query the database through Prisma.
 
-Status:
+Status: ✅ Done
 
 - Built.
 - Schema has been split into domain files under `prisma/schema`.
 - Local and Docker database workflows are understood.
 
-### 2. Multilanguage Menu Foundation
+### ✅ 2. Multilanguage Menu Foundation
 
 Add the first customer-facing translation layer.
 
@@ -349,13 +356,13 @@ Done when:
 - A menu item can have English and one additional language translation.
 - The app can query menu items for a requested locale.
 
-Status:
+Status: ✅ Done
 
 - Built as a foundation.
 - Menu items have descriptions, categories, ingredients, images, and translation support.
 - Full app translation is still future work.
 
-### 3. Employee Authentication
+### ✅ 3. Employee Authentication
 
 Add Better Auth.
 
@@ -374,14 +381,14 @@ Done when:
 - Anonymous users cannot access staff pages.
 - Staff identity is available to server actions that change orders, payments, menu items, or employees.
 
-Status:
+Status: ✅ Done
 
 - Built.
 - Owner login uses email/password.
 - Employee login uses private 6-digit login codes.
 - Employee profiles store hire/resign dates and role data.
 
-### 4. Employee Admin
+### ✅ 4. Employee Admin
 
 Build the first owner/admin workflow.
 
@@ -403,13 +410,13 @@ Future improvement:
 - Add required password reset after first login.
 - Record employee management changes in `AuditEvent`.
 
-Status:
+Status: ✅ Done
 
 - Built as a basic admin workflow.
 - Owner can create employees and regenerate employee login codes.
 - More polished employee management and audit logs are still future work.
 
-### 5. Menu Management
+### 🟡 5. Menu Management
 
 Build restaurant menu data.
 
@@ -424,14 +431,14 @@ Done when:
 
 - POS menu comes from Postgres instead of hardcoded arrays.
 
-Status:
+Status: 🟡 In progress
 
 - Partly built.
 - Seeded menu data is in Postgres.
 - Customer-facing menu and takeout pages use database menu items.
 - Owner/admin menu editing is still needed.
 
-### 6. Customer Membership And Loyalty Foundation
+### 🟡 6. Customer Membership And Loyalty Foundation
 
 Build optional customer accounts and member identity.
 
@@ -448,13 +455,13 @@ Done when:
 - A customer can become a member without becoming an employee.
 - A logged-in customer can be recognized across storefront and ordering flows.
 
-Status:
+Status: 🟡 In progress
 
 - Built as a foundation.
 - Google OAuth works locally when the origin matches OAuth settings.
 - Loyalty point earning and reward redemption still need the ledger/rules engine.
 
-### 7. Table And QR Flow
+### ✅ 7. Table And QR Flow
 
 Create customer entry points.
 
@@ -471,14 +478,14 @@ Done when:
 
 - A table can scan a QR code and see its current session.
 
-Status:
+Status: ✅ Done
 
 - Built.
 - QR table sessions exist.
 - Table participants and ownership exist.
 - Owner setup stores attendee count and owner phone verification state.
 
-### 8. Realtime Table Ordering Flow
+### 🟡 8. Realtime Table Ordering Flow
 
 Build customer and staff order flow.
 
@@ -494,7 +501,7 @@ Done when:
 
 - A table order can be created, updated, submitted, and seen by every connected table participant without manual refresh.
 
-Status:
+Status: 🟡 In progress
 
 - Mostly built.
 - Socket.IO table rooms work locally.
@@ -503,7 +510,7 @@ Status:
 - Owner security toggle exists.
 - Kitchen-facing order queue is the next missing operations page.
 
-### 9. Takeout Ordering Flow
+### 🟡 9. Takeout Ordering Flow
 
 Build non-table ordering for customers who want pickup.
 
@@ -519,13 +526,13 @@ Done when:
 
 - A customer can start a takeout cart, checkout, and create a kitchen-visible order.
 
-Status:
+Status: 🟡 In progress
 
 - Partly built.
 - Takeout page and Stripe checkout route exist.
 - Persisting takeout sessions/orders as durable records still needs completion.
 
-### 10. Checkout And Payments
+### 🟡 10. Checkout And Payments
 
 Close the table lifecycle.
 
@@ -543,7 +550,7 @@ Done when:
 - A full table visit can start, order, submit to kitchen, checkout, and close.
 - A takeout order can start, checkout, submit to kitchen, and close.
 
-Status:
+Status: 🟡 In progress
 
 - Partly built.
 - Stripe checkout is connected for dine-in and takeout.
@@ -551,7 +558,7 @@ Status:
 - Stripe Terminal/staff card reader flow is future work.
 - Final order closing and receipt/reporting polish are still needed.
 
-### 11. Kitchen Queue
+### ⬜ 11. Kitchen Queue
 
 Build the first restaurant operations screen.
 
@@ -576,7 +583,11 @@ Done when:
 - Takeout orders can appear in the same kitchen flow.
 - Customers and staff can see order status updates.
 
-### 12. Staff Orders Dashboard
+Status: ⬜ Not started
+
+- This is the next planned build target.
+
+### ⬜ 12. Staff Orders Dashboard
 
 Build the staff operations hub.
 
@@ -598,7 +609,11 @@ Done when:
 
 - A server or cashier can understand the current restaurant state without opening the database.
 
-### 13. Waitlist
+Status: ⬜ Not started
+
+- Build after the kitchen queue creates visible order operations.
+
+### ⬜ 13. Waitlist
 
 Build a host/waitlist flow based on table capacity.
 
@@ -623,7 +638,11 @@ Done when:
 - Staff can seat a waitlist party at a suitable table.
 - The public display updates when a party is called.
 
-### 14. Table Floor View
+Status: ⬜ Not started
+
+- Build after staff orders and waitlist so the floor view can summarize real operational state.
+
+### ⬜ 14. Table Floor View
 
 Build a table status board for employees.
 
@@ -644,7 +663,11 @@ Done when:
 
 - Staff can glance at one screen and understand the dining room.
 
-### 15. Admin Menu And Restaurant Settings
+Status: ⬜ Not started
+
+- Depends on active table, order, and waitlist data being stable enough to configure.
+
+### ⬜ 15. Admin Menu And Restaurant Settings
 
 Make the restaurant self-service for owners.
 
@@ -669,7 +692,11 @@ Done when:
 
 - A restaurant owner can set up and modify the business basics from the UI.
 
-### 16. Loyalty Rules And Rewards
+Status: ⬜ Not started
+
+- Build after basic staff operations so rewards can connect to real paid orders.
+
+### ⬜ 16. Loyalty Rules And Rewards
 
 Build the full rewards system on top of customer membership.
 
@@ -687,7 +714,11 @@ Done when:
 - A customer can redeem points for an owner-selected reward item.
 - Owner/manager can alter the loyalty conversion rule without code changes.
 
-### 17. Reports And CSV Exports
+Status: ⬜ Not started
+
+- Build after checkout, kitchen, and order completion flows are stable.
+
+### ⬜ 17. Reports And CSV Exports
 
 Create simple business reporting before advanced analytics.
 
@@ -709,7 +740,11 @@ Done when:
 
 - A restaurant owner can review sales without using Stripe or the database directly.
 
-### 18. Backups
+Status: ⬜ Not started
+
+- Needs finalized production database workflow.
+
+### 🔮 18. Backups
 
 Protect restaurant data.
 
@@ -724,7 +759,11 @@ Done when:
 
 - A restaurant database can be backed up and restored safely.
 
-### 19. Monitoring And Hardening
+Status: 🔮 Later
+
+- Important before real customer production usage.
+
+### 🔮 19. Monitoring And Hardening
 
 Improve operations after core app works.
 
@@ -738,6 +777,10 @@ Focus:
 Done when:
 
 - App health, host health, and backup health are observable.
+
+Status: 🔮 Later
+
+- Keep this after the core restaurant operations loop is usable.
 
 ## Learning Rule
 
