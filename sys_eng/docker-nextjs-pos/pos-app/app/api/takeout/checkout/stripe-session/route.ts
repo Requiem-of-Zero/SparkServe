@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import type Stripe from "stripe";
 
@@ -10,7 +11,9 @@ import {
   PaymentProvider,
   PaymentStatus,
   PaymentTransactionType,
+  TakeoutSessionStatus,
 } from "@/lib/generated/prisma/enums";
+import { notifyKitchenQueueChanged } from "@/lib/kitchen-realtime";
 import { prisma } from "@/lib/prisma";
 import { getStripeClient } from "@/lib/stripe";
 
@@ -62,6 +65,25 @@ function parseTakeoutItems(body: unknown): TakeoutCheckoutItem[] {
 
     return { menuItemId, quantity };
   });
+}
+
+function createPublicToken() {
+  return randomBytes(18).toString("base64url");
+}
+
+async function createUniqueTakeoutToken() {
+  for (let attempts = 0; attempts < 20; attempts += 1) {
+    const publicToken = createPublicToken();
+    const existingSession = await prisma.takeoutSession.findUnique({
+      where: { publicToken },
+    });
+
+    if (!existingSession) {
+      return publicToken;
+    }
+  }
+
+  throw new Error("Could not create a unique takeout session token.");
 }
 
 // Creates a Stripe Checkout Session for a private takeout cart. Prices are
@@ -127,6 +149,27 @@ export async function POST(request: NextRequest) {
           menuItemIds: menuItems.map((item) => item.id).join(","),
         },
       };
+    const submittedAt = new Date();
+    const takeoutSession = await prisma.takeoutSession.create({
+      data: {
+        publicToken: await createUniqueTakeoutToken(),
+        status: TakeoutSessionStatus.SUBMITTED,
+        submittedAt,
+        items: {
+          createMany: {
+            data: menuItems.map((item) => ({
+              menuItemId: item.id,
+              quantity: itemQuantityByMenuId.get(item.id) ?? 1,
+            })),
+          },
+        },
+      },
+    });
+
+    paymentIntentData.metadata = {
+      ...paymentIntentData.metadata,
+      takeoutSessionId: String(takeoutSession.id),
+    };
 
     if (connectedAccountId) {
       paymentIntentData.transfer_data = {
@@ -190,6 +233,7 @@ export async function POST(request: NextRequest) {
       payment_intent_data: paymentIntentData,
       metadata: {
         checkoutType: "takeout",
+        takeoutSessionId: String(takeoutSession.id),
         subtotalCents: String(totals.subtotalCents),
         taxCents: String(totals.taxCents),
         totalCents: String(totals.totalCents),
@@ -213,6 +257,8 @@ export async function POST(request: NextRequest) {
         providerAccountId: connectedAccountId,
       },
     });
+
+    await notifyKitchenQueueChanged("takeout-submitted");
 
     return NextResponse.json({
       stripeCheckoutSessionId: stripeSession.id,

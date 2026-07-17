@@ -7,6 +7,7 @@ import {
   PaymentStatus,
   PaymentTransactionType,
   TableSessionStatus,
+  TakeoutSessionStatus,
 } from "@/lib/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { getStripeClient, getStripeWebhookSecret } from "@/lib/stripe";
@@ -92,19 +93,32 @@ async function markTakeoutPaymentPaid(session: Stripe.Checkout.Session) {
 
   const paymentIntentId = getPaymentIntentId(session);
   const paidAt = new Date();
+  const takeoutSessionId = Number(session.metadata?.takeoutSessionId);
 
-  await prisma.payment.updateMany({
-    where: {
-      transactionType: PaymentTransactionType.TAKEOUT,
-      providerPaymentId: {
-        in: [paymentIntentId, session.id].filter((id): id is string => Boolean(id)),
+  await prisma.$transaction(async (tx) => {
+    await tx.payment.updateMany({
+      where: {
+        transactionType: PaymentTransactionType.TAKEOUT,
+        providerPaymentId: {
+          in: [paymentIntentId, session.id].filter((id): id is string => Boolean(id)),
+        },
       },
-    },
-    data: {
-      status: PaymentStatus.PAID,
-      paidAt,
-      providerPaymentId: paymentIntentId ?? session.id,
-    },
+      data: {
+        status: PaymentStatus.PAID,
+        paidAt,
+        providerPaymentId: paymentIntentId ?? session.id,
+      },
+    });
+
+    if (Number.isInteger(takeoutSessionId)) {
+      await tx.takeoutSession.update({
+        where: { id: takeoutSessionId },
+        data: {
+          status: TakeoutSessionStatus.PAID,
+          paidAt,
+        },
+      });
+    }
   });
 }
 
