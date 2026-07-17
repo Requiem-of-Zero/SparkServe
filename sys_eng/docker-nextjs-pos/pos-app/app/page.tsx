@@ -1,17 +1,15 @@
 import Link from "next/link";
 
-import { EmberMark } from "@/app/components/ember-mark";
+import { RestaurantBrandLink } from "@/app/components/restaurant-brand-link";
 import { SiteFooter } from "@/app/components/site-footer";
 import { getCurrentSession } from "@/lib/employee-auth";
 import { prisma } from "@/lib/prisma";
-
-const platformName = "Ember";
 
 function formatPrice(priceCents: number) {
   return `$${(priceCents / 100).toFixed(2)}`;
 }
 
-// Customer storefront for the restaurant using Ember. Takeout has its own
+// Customer storefront for the restaurant using Ablaze. Takeout has its own
 // private cart flow, while dine-in ordering still uses table-session QR links.
 export default async function Home() {
   const session = await getCurrentSession();
@@ -45,6 +43,7 @@ export default async function Home() {
     session?.user.name ??
     session?.user.email;
   const isLoggedIn = Boolean(session?.user);
+  const accountHref = employeeProfile ? "/staff" : "/customer/account";
 
   return (
     <main className="min-h-screen bg-[#100b0b] text-[#fff7ed]">
@@ -58,25 +57,22 @@ export default async function Home() {
 
         <div className="relative mx-auto flex min-h-[78vh] max-w-6xl flex-col px-5 py-5">
           <nav className="flex items-center justify-between gap-3">
-            <Link
-              href="/"
-              className="flex items-center gap-3 text-xl font-bold tracking-wide"
-            >
-              <EmberMark className="h-9 w-9" />
-              <span>{platformName}</span>
-            </Link>
+            <RestaurantBrandLink
+              logoUrl={restaurant?.logoUrl}
+              name={restaurantName}
+            />
             <div className="flex gap-2 text-sm">
               {isLoggedIn ? (
                 <>
                   <Link
-                    href="/customer/account"
+                    href={accountHref}
                     className="rounded-md border border-orange-200/25 px-3 py-2 hover:bg-orange-100/10"
                   >
                     {displayName}
                   </Link>
                   {employeeProfile?.role === "OWNER" ? (
                     <Link
-                      href="/admin/employees"
+                      href="/owner/employees"
                       className="rounded-md border border-orange-200/25 px-3 py-2 hover:bg-orange-100/10"
                     >
                       Owner
@@ -92,7 +88,7 @@ export default async function Home() {
                     Member
                   </Link>
                   <Link
-                    href="/admin/login"
+                    href="/owner/login"
                     className="rounded-md border border-orange-200/25 px-3 py-2 hover:bg-orange-100/10"
                   >
                     Owner
@@ -108,7 +104,7 @@ export default async function Home() {
                 {restaurantName}
               </p>
               <h1 className="mt-4 text-5xl font-bold leading-tight md:text-7xl">
-                Order fresh takeout with Ember.
+                Order fresh takeout with Ablaze.
               </h1>
               <p className="mt-5 max-w-xl text-lg text-zinc-200">
                 Browse the menu, build a shared cart, and check out with card.
@@ -141,8 +137,8 @@ export default async function Home() {
             </h2>
             <p className="mt-2 max-w-2xl text-zinc-300">
               {isLoggedIn
-                ? `Welcome back${displayName ? `, ${displayName}` : ""}. Ember can connect paid orders to loyalty points, member history, and restaurant rewards.`
-                : "Create an account once and Ember can connect future paid orders to loyalty points, member history, and restaurant rewards."}
+                ? `Welcome back${displayName ? `, ${displayName}` : ""}. Ablaze can connect paid orders to loyalty points, member history, and restaurant rewards.`
+                : "Create an account once and Ablaze can connect future paid orders to loyalty points, member history, and restaurant rewards."}
             </p>
             {customerProfile ? (
               <p className="mt-3 text-sm font-semibold text-[#ffd166]">
@@ -151,10 +147,20 @@ export default async function Home() {
             ) : null}
           </div>
           <Link
-            href={isLoggedIn ? "/customer/account" : "/customer/signup"}
+            href={
+              isLoggedIn
+                ? employeeProfile
+                  ? "/staff"
+                  : "/customer/account"
+                : "/customer/signup"
+            }
             className="inline-flex rounded-md border border-[#ffd166] px-5 py-3 font-semibold text-[#ffd166] hover:bg-[#2a150d]"
           >
-            {isLoggedIn ? "View rewards" : "Join rewards"}
+            {isLoggedIn
+              ? employeeProfile
+                ? "Open staff tools"
+                : "View rewards"
+              : "Join rewards"}
           </Link>
         </div>
       </section>

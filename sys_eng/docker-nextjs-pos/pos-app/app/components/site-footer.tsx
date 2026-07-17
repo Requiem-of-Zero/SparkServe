@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { EmberMark } from "./ember-mark";
+import { AblazeMark } from "./ablaze-mark";
 
 type SiteFooterProps = {
   restaurantName?: string | null;
@@ -27,7 +27,7 @@ const footerColumns = [
     heading: "Support",
     links: [
       { href: "/customer/login", label: "Member login" },
-      { href: "/admin/login", label: "Owner portal" },
+      { href: "/owner/login", label: "Owner portal" },
       { href: "/", label: "Contact" },
     ],
   },
@@ -52,15 +52,15 @@ export function SiteFooter({ restaurantName }: SiteFooterProps) {
         <div className="grid gap-8 lg:grid-cols-[1.35fr_2fr]">
           <div>
             <Link href="/" className="inline-flex items-center gap-3 font-bold">
-              <EmberMark className="h-10 w-10" />
-              <span>Ember</span>
+              <AblazeMark className="h-10 w-10" />
+              <span>Ablaze</span>
             </Link>
             <p className="mt-4 max-w-sm text-sm leading-6 text-zinc-400">
-              {restaurantName ?? "This restaurant"} uses Ember for online
+              {restaurantName ?? "This restaurant"} uses Ablaze for online
               ordering, table sessions, takeout carts, and member rewards.
             </p>
             <p className="mt-4 text-sm font-semibold text-[#ffd166]">
-              Powered by Ember
+              Powered by Ablaze
             </p>
           </div>
 
@@ -88,7 +88,7 @@ export function SiteFooter({ restaurantName }: SiteFooterProps) {
           <p>
             © {year} {restaurantName ?? "Restaurant"}. All rights reserved.
           </p>
-          <p>Ember restaurant ordering platform.</p>
+          <p>Ablaze restaurant ordering platform.</p>
         </div>
       </div>
     </footer>

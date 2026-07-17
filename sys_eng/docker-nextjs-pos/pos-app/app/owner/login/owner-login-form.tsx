@@ -5,7 +5,7 @@ import { FormEvent, useState } from "react";
 
 import { authClient } from "@/lib/auth-client";
 
-export function AdminLoginForm() {
+export function OwnerLoginForm() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -19,21 +19,21 @@ export function AdminLoginForm() {
     const email = String(formData.get("email") ?? "").trim();
     const password = String(formData.get("password") ?? "");
 
-    // Owners/admins use regular email login for the back-office admin panel.
+    // Owners use regular email login for the back-office owner panel.
     const result = await authClient.signIn.email({
       email,
       password,
-      callbackURL: "/admin/employees",
+      callbackURL: "/owner/employees",
     });
 
     setIsSubmitting(false);
 
     if (result.error) {
-      setError(result.error.message ?? "Admin login failed.");
+      setError(result.error.message ?? "Owner login failed.");
       return;
     }
 
-    router.push("/admin/employees");
+    router.push("/owner/employees");
     router.refresh();
   }
 

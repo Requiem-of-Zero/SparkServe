@@ -5,7 +5,7 @@ import {
   createEmployeeAction,
   rotateAllEmployeeCodesAction,
   rotateSelectedEmployeeCodesAction,
-} from "@/app/admin/employees/actions";
+} from "@/app/owner/employees/actions";
 import { LogoutButton } from "@/app/components/logout-button";
 import { getCurrentEmployee } from "@/lib/employee-auth";
 import type { Prisma } from "@/lib/generated/prisma/client";
@@ -49,7 +49,7 @@ export default async function EmployeesPage({ searchParams }: EmployeePageProps)
             Sign in with the owner email and password to manage staff accounts.
           </p>
           <Link
-            href="/admin/login"
+            href="/owner/login"
             className="mt-6 inline-flex rounded-md bg-emerald-500 px-4 py-2 font-semibold text-zinc-950 hover:bg-emerald-400"
           >
             Go to owner login
@@ -128,7 +128,7 @@ function BootstrapOwnerScreen({ createdCode }: { createdCode?: string }) {
               {createdCode}
             </p>
             <Link
-              href="/admin/login"
+              href="/owner/login"
               className="mt-4 inline-flex rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-emerald-400"
             >
               Continue to owner login

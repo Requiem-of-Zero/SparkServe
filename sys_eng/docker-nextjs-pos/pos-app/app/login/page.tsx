@@ -19,7 +19,7 @@ export default function LoginPage() {
 
         <p className="mt-6 text-sm text-zinc-500">
           Owners managing employees should use{" "}
-          <Link href="/admin/login" className="text-emerald-300 hover:text-emerald-200">
+          <Link href="/owner/login" className="text-emerald-300 hover:text-emerald-200">
             owner login
           </Link>
           .

@@ -3,10 +3,14 @@
 import { randomInt } from "node:crypto";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+
 import { auth } from "@/lib/auth";
+import { writeAuditEvent } from "@/lib/audit-log";
 import { requireOwner } from "@/lib/employee-auth";
 import { EmployeeRole } from "@/lib/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
+
+const OWNER_EMPLOYEES_PATH = "/owner/employees";
 
 function generateEmployeeLoginCode() {
   return randomInt(0, 1_000_000).toString().padStart(6, "0");
@@ -81,7 +85,7 @@ async function createAuthUserWithEmployeeProfile({
     headers: await headers(),
   });
 
-  await prisma.employeeProfile.create({
+  const employeeProfile = await prisma.employeeProfile.create({
     data: {
       userId: result.user.id,
       loginCode: employeeCode,
@@ -90,7 +94,7 @@ async function createAuthUserWithEmployeeProfile({
     },
   });
 
-  return employeeCode;
+  return { employeeCode, employeeProfile };
 }
 
 // One-time setup action for a brand-new restaurant database.
@@ -101,40 +105,62 @@ export async function bootstrapOwnerAction(formData: FormData) {
   });
 
   if (existingOwner) {
-    redirect("/admin/employees");
+    redirect(OWNER_EMPLOYEES_PATH);
   }
 
-  const code = await createAuthUserWithEmployeeProfile({
-    name: readRequiredString(formData, "name"),
-    displayName: readOptionalString(formData, "displayName"),
-    email: readRequiredString(formData, "email"),
-    password: readRequiredString(formData, "password"),
-    confirmPassword: readRequiredString(formData, "confirmPassword"),
-    role: "OWNER",
+  const email = readRequiredString(formData, "email");
+  const { employeeCode: code, employeeProfile } =
+    await createAuthUserWithEmployeeProfile({
+      name: readRequiredString(formData, "name"),
+      displayName: readOptionalString(formData, "displayName"),
+      email,
+      password: readRequiredString(formData, "password"),
+      confirmPassword: readRequiredString(formData, "confirmPassword"),
+      role: "OWNER",
+    });
+
+  await writeAuditEvent({
+    action: "OWNER_BOOTSTRAPPED",
+    employeeProfileId: employeeProfile.id,
+    entityType: "EmployeeProfile",
+    entityId: employeeProfile.id,
+    metadata: { email, role: "OWNER" },
   });
 
-  redirect(`/admin/employees?created=${code}&role=OWNER`);
+  redirect(`${OWNER_EMPLOYEES_PATH}?created=${code}&role=OWNER`);
 }
 
 // Owner-only action for creating staff accounts.
 // Owners distribute the generated code, but staff-facing screens show displayName.
 export async function createEmployeeAction(formData: FormData) {
-  await requireOwner();
+  const owner = await requireOwner();
 
   const roleValue = readRequiredString(formData, "role");
   const role =
     roleValue === "MANAGER" ? EmployeeRole.MANAGER : EmployeeRole.CASHIER;
+  const email = readRequiredString(formData, "email");
+  const { employeeCode: code, employeeProfile } =
+    await createAuthUserWithEmployeeProfile({
+      name: readRequiredString(formData, "name"),
+      displayName: readOptionalString(formData, "displayName"),
+      email,
+      password: readRequiredString(formData, "password"),
+      confirmPassword: readRequiredString(formData, "confirmPassword"),
+      role,
+    });
 
-  const code = await createAuthUserWithEmployeeProfile({
-    name: readRequiredString(formData, "name"),
-    displayName: readOptionalString(formData, "displayName"),
-    email: readRequiredString(formData, "email"),
-    password: readRequiredString(formData, "password"),
-    confirmPassword: readRequiredString(formData, "confirmPassword"),
-    role,
+  await writeAuditEvent({
+    action: "EMPLOYEE_CREATED",
+    employeeProfileId: owner.id,
+    entityType: "EmployeeProfile",
+    entityId: employeeProfile.id,
+    metadata: {
+      role,
+      email,
+    },
   });
 
-  redirect(`/admin/employees?created=${code}&role=${role}`);
+  redirect(`${OWNER_EMPLOYEES_PATH}?created=${code}&role=${role}`);
 }
 
 function readEmployeeIds(formData: FormData) {
@@ -144,7 +170,10 @@ function readEmployeeIds(formData: FormData) {
     .filter((value) => Number.isInteger(value) && value > 0);
 }
 
-async function rotateEmployeeCodes(employeeIds: number[]) {
+async function rotateEmployeeCodes(
+  employeeIds: number[],
+  actorEmployeeId: number,
+) {
   let rotated = 0;
 
   for (const employeeId of employeeIds) {
@@ -155,6 +184,14 @@ async function rotateEmployeeCodes(employeeIds: number[]) {
       data: { loginCode },
     });
 
+    await writeAuditEvent({
+      action: "EMPLOYEE_CODE_ROTATED",
+      employeeProfileId: actorEmployeeId,
+      entityType: "EmployeeProfile",
+      entityId: employeeId,
+      metadata: { rotated: true },
+    });
+
     rotated += 1;
   }
 
@@ -163,29 +200,30 @@ async function rotateEmployeeCodes(employeeIds: number[]) {
 
 // Owner-only action for rotating selected private employee login codes.
 export async function rotateSelectedEmployeeCodesAction(formData: FormData) {
-  await requireOwner();
+  const owner = await requireOwner();
 
   const employeeIds = readEmployeeIds(formData);
 
   if (employeeIds.length === 0) {
-    redirect("/admin/employees?rotated=0");
+    redirect(`${OWNER_EMPLOYEES_PATH}?rotated=0`);
   }
 
-  const rotated = await rotateEmployeeCodes(employeeIds);
+  const rotated = await rotateEmployeeCodes(employeeIds, owner.id);
 
-  redirect(`/admin/employees?rotated=${rotated}`);
+  redirect(`${OWNER_EMPLOYEES_PATH}?rotated=${rotated}`);
 }
 
 // Owner-only action for rotating every employee login code in one sweep.
 export async function rotateAllEmployeeCodesAction() {
-  await requireOwner();
+  const owner = await requireOwner();
 
   const employees = await prisma.employeeProfile.findMany({
     select: { id: true },
   });
   const rotated = await rotateEmployeeCodes(
     employees.map((employee) => employee.id),
+    owner.id,
   );
 
-  redirect(`/admin/employees?rotated=${rotated}`);
+  redirect(`${OWNER_EMPLOYEES_PATH}?rotated=${rotated}`);
 }
