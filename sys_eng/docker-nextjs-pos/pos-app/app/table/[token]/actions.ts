@@ -696,6 +696,7 @@ export async function submitCartToKitchenAction(
     });
 
     revalidatePath(`/table/${token}`);
+    await notifyKitchenQueueChanged("dine-in-submitted");
 
     return {
       message: `Order #${order.id} sent to kitchen.`,
