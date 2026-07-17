@@ -12,6 +12,7 @@ model MenuItem {
   orderItems          OrderItem[]
   translations        MenuItemTranslation[]
   takeoutSessionItems TakeoutSessionItem[]
+  ingredients         MenuItemIngredient[]
 }
 
 model MenuItemTranslation {
@@ -26,4 +27,35 @@ model MenuItemTranslation {
   menuItem MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
 
   @@unique([menuItemId, locale])
+}
+
+/// Reusable ingredient catalog for menu transparency and future inventory.
+model Ingredient {
+  id             Int      @id @default(autoincrement())
+  name           String   @unique
+  commonAllergen Boolean  @default(false)
+  allergenNote   String?
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  menuItems MenuItemIngredient[]
+}
+
+/// Join table between menu items and ingredients.
+/// The options fields prepare customer remove/swap choices and inventory usage.
+model MenuItemIngredient {
+  id           Int     @id @default(autoincrement())
+  menuItemId   Int
+  ingredientId Int
+  removable    Boolean @default(true)
+  swappable    Boolean @default(false)
+  swapGroup    String?
+  sortOrder    Int     @default(0)
+
+  menuItem   MenuItem   @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+
+  @@unique([menuItemId, ingredientId])
+  @@index([ingredientId])
 }

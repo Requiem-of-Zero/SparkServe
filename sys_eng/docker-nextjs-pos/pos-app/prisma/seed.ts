@@ -21,15 +21,35 @@ const prisma = new PrismaClient({
 
 const demoPassword = "abc12345";
 
-// Ember's fallback restaurant palette. Owners can override these later, but
-// fresh local/demo restaurants should immediately feel like the Ember brand.
-const emberDefaultTheme = {
-  logoUrl: "/brand/ember-logo-transparent.png",
+// Ablaze's fallback restaurant palette. Owners can override these later, but
+// fresh local/demo restaurants should immediately feel like the Ablaze brand.
+const ablazeDefaultTheme = {
+  logoUrl: null,
   primaryColor: "#ff6a1a",
   accentColor: "#ffd166",
   backgroundColor: "#100b0b",
   textColor: "#fff7ed",
 };
+
+const demoIngredients = [
+  { name: "Beef" },
+  { name: "Wheat noodles", commonAllergen: true, allergenNote: "Contains wheat/gluten" },
+  { name: "Scallions" },
+  { name: "Black tea" },
+  { name: "Milk", commonAllergen: true, allergenNote: "Contains dairy" },
+  { name: "Pork" },
+  { name: "Cabbage" },
+  { name: "Wheat wrapper", commonAllergen: true, allergenNote: "Contains wheat/gluten" },
+  { name: "Rice" },
+  { name: "Chicken" },
+  { name: "Egg", commonAllergen: true, allergenNote: "Contains egg" },
+  { name: "Shrimp", commonAllergen: true, allergenNote: "Contains shellfish" },
+  { name: "Garlic" },
+  { name: "Butter", commonAllergen: true, allergenNote: "Contains dairy" },
+  { name: "Mango" },
+  { name: "Cream", commonAllergen: true, allergenNote: "Contains dairy" },
+  { name: "Gelatin" },
+];
 
 const demoMenuItems = [
   {
@@ -39,6 +59,7 @@ const demoMenuItems = [
     sortOrder: 10,
     imageUrl:
       "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=900&q=80",
+    ingredients: ["Beef", "Wheat noodles", "Scallions"],
     translations: [
       {
         locale: "en",
@@ -63,6 +84,7 @@ const demoMenuItems = [
     sortOrder: 80,
     imageUrl:
       "https://images.unsplash.com/photo-1558857563-b371033873b8?auto=format&fit=crop&w=900&q=80",
+    ingredients: ["Black tea", "Milk"],
     translations: [
       {
         locale: "en",
@@ -87,6 +109,7 @@ const demoMenuItems = [
     sortOrder: 20,
     imageUrl:
       "https://images.unsplash.com/photo-1496116218417-1a781b1c416c?auto=format&fit=crop&w=900&q=80",
+    ingredients: ["Pork", "Cabbage", "Wheat wrapper"],
     translations: [
       {
         locale: "en",
@@ -111,6 +134,7 @@ const demoMenuItems = [
     sortOrder: 30,
     imageUrl:
       "https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=900&q=80",
+    ingredients: ["Rice", "Chicken", "Egg"],
     translations: [
       {
         locale: "en",
@@ -135,6 +159,7 @@ const demoMenuItems = [
     sortOrder: 40,
     imageUrl:
       "https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&w=900&q=80",
+    ingredients: ["Shrimp", "Garlic", "Butter"],
     translations: [
       {
         locale: "en",
@@ -159,6 +184,7 @@ const demoMenuItems = [
     sortOrder: 90,
     imageUrl:
       "https://images.unsplash.com/photo-1551024506-0bccd828d307?auto=format&fit=crop&w=900&q=80",
+    ingredients: ["Mango", "Cream", "Gelatin"],
     translations: [
       {
         locale: "en",
@@ -344,6 +370,7 @@ async function seedDemoUsers() {
 }
 
 async function resetDemoOperationalData() {
+  await prisma.auditEvent.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.checkout.deleteMany();
   await prisma.orderItem.deleteMany();
@@ -352,12 +379,34 @@ async function resetDemoOperationalData() {
   await prisma.tableSessionItem.deleteMany();
   await prisma.tableSessionParticipant.deleteMany();
   await prisma.tableSession.deleteMany();
+  await prisma.menuItemIngredient.deleteMany();
   await prisma.menuItemTranslation.deleteMany();
   await prisma.menuItem.deleteMany();
+  await prisma.ingredient.deleteMany();
   await prisma.diningTable.deleteMany();
 }
 
+async function seedDemoIngredients() {
+  const ingredientByName = new Map<string, number>();
+
+  for (const ingredient of demoIngredients) {
+    const savedIngredient = await prisma.ingredient.create({
+      data: {
+        name: ingredient.name,
+        commonAllergen: ingredient.commonAllergen ?? false,
+        allergenNote: ingredient.allergenNote,
+      },
+    });
+
+    ingredientByName.set(savedIngredient.name, savedIngredient.id);
+  }
+
+  return ingredientByName;
+}
+
 async function seedDemoMenuItems() {
+  const ingredientByName = await seedDemoIngredients();
+
   for (const item of demoMenuItems) {
     await prisma.menuItem.create({
       data: {
@@ -369,6 +418,24 @@ async function seedDemoMenuItems() {
         active: true,
         translations: {
           create: item.translations,
+        },
+        ingredients: {
+          create: item.ingredients
+            .map((ingredientName, index) => {
+              const ingredientId = ingredientByName.get(ingredientName);
+
+              if (!ingredientId) {
+                return null;
+              }
+
+              return {
+                ingredientId,
+                removable: true,
+                swappable: false,
+                sortOrder: index * 10,
+              };
+            })
+            .filter((ingredient) => ingredient !== null),
         },
       },
     });
@@ -433,7 +500,7 @@ async function main() {
       publicUrl: "http://localhost:8080",
       receiptFooter: "Thank you for visiting Big Fish House.",
       supportedLocales: ["en", "es"],
-      ...emberDefaultTheme,
+      ...ablazeDefaultTheme,
     },
     create: {
       id: 1,
@@ -441,7 +508,7 @@ async function main() {
       publicUrl: "http://localhost:8080",
       receiptFooter: "Thank you for visiting Big Fish House.",
       supportedLocales: ["en", "es"],
-      ...emberDefaultTheme,
+      ...ablazeDefaultTheme,
     },
   });
 
