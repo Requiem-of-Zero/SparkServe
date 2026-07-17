@@ -33,7 +33,9 @@ export function SubmitCartToKitchenButton({
     initialState,
   );
   const isOwner = participantRole === "OWNER";
-  const canSubmit = isReady && canOrder && isOwner && Boolean(participantPublicId);
+  const hasParticipant = Boolean(participantPublicId);
+  const canRequestCode = isReady && canOrder && isOwner && hasParticipant;
+  const canSubmit = isReady && canOrder && hasParticipant;
 
   useEffect(() => {
     if (submitState.status === "submitted") {
@@ -53,7 +55,7 @@ export function SubmitCartToKitchenButton({
           />
           <button
             type="submit"
-            disabled={isRequestPending || !canSubmit}
+            disabled={isRequestPending || !canRequestCode}
             suppressHydrationWarning
             className="w-full rounded-md border border-amber-500 px-4 py-2 text-sm font-semibold text-amber-100 hover:bg-amber-950 disabled:cursor-not-allowed disabled:opacity-60"
           >
@@ -112,9 +114,9 @@ export function SubmitCartToKitchenButton({
         </button>
       </form>
 
-      {!isOwner ? (
+      {orderVerificationRequired && !isOwner ? (
         <p className="text-xs text-zinc-400">
-          The verified table owner sends orders to the kitchen.
+          Ask the verified table owner for the current kitchen submit code.
         </p>
       ) : null}
       {submitState.message ? (

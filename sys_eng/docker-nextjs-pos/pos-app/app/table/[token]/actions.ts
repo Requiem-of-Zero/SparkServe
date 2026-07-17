@@ -10,6 +10,7 @@ import {
 } from "@/lib/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { calculateOrderTotals } from "@/lib/checkout";
+import { notifyKitchenQueueChanged } from "@/lib/kitchen-realtime";
 import { canParticipantRespondToOwnershipTransfer } from "@/lib/table-ownership-transfer";
 import {
   canParticipantRequestOwnerVerification,
@@ -103,6 +104,34 @@ async function requireOwnerParticipant({
     })
   ) {
     throw new Error("Only the table session owner can do this.");
+  }
+
+  return { participant, session };
+}
+
+// Kitchen submission can be done by any joined participant. If the owner has
+// enabled per-order verification, the submitter still needs the owner's code.
+async function requireTableParticipant({
+  token,
+  participantPublicId,
+}: {
+  token: string;
+  participantPublicId: string;
+}) {
+  const session = await prisma.tableSession.findUnique({
+    where: { publicToken: token },
+  });
+
+  if (!session || session.status !== "OPEN") {
+    throw new Error("Table session is not open.");
+  }
+
+  const participant = await prisma.tableSessionParticipant.findUnique({
+    where: { publicId: participantPublicId },
+  });
+
+  if (!participant || participant.tableSessionId !== session.id) {
+    throw new Error("Join this table before sending an order.");
   }
 
   return { participant, session };
@@ -528,7 +557,7 @@ export async function submitCartToKitchenAction(
     );
     const rawVerificationCode = formData.get("verificationCode");
 
-    const { participant, session } = await requireOwnerParticipant({
+    const { participant, session } = await requireTableParticipant({
       token,
       participantPublicId,
     });
@@ -544,13 +573,13 @@ export async function submitCartToKitchenAction(
       throw new Error("Verify the table owner phone before sending to kitchen.");
     }
 
-    const pendingCodeHash = participant.phoneVerificationCodeHash;
-    const pendingCodeExpiresAt = participant.phoneVerificationExpiresAt;
+    const pendingCodeHash = verifiedOwner.phoneVerificationCodeHash;
+    const pendingCodeExpiresAt = verifiedOwner.phoneVerificationExpiresAt;
 
     if (
       !canSubmitKitchenOrder({
         sessionStatus: session.status as TableSessionStatusLike,
-        ownerPhoneVerifiedAt: participant.phoneVerifiedAt,
+        ownerPhoneVerifiedAt: verifiedOwner.phoneVerifiedAt,
         orderVerificationRequired: session.orderVerificationRequired,
         hasPendingVerificationCode: Boolean(
           pendingCodeHash && pendingCodeExpiresAt,
@@ -581,7 +610,7 @@ export async function submitCartToKitchenAction(
 
       const submittedCodeHash = hashVerificationCode({
         code: verificationCode,
-        participantPublicId,
+        participantPublicId: verifiedOwner.publicId,
       });
 
       if (submittedCodeHash !== pendingCodeHash) {
@@ -656,7 +685,7 @@ export async function submitCartToKitchenAction(
       });
 
       await tx.tableSessionParticipant.update({
-        where: { id: participant.id },
+        where: { id: verifiedOwner.id },
         data: {
           phoneVerificationCodeHash: null,
           phoneVerificationExpiresAt: null,
