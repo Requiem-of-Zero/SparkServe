@@ -10,10 +10,30 @@ model EmployeeProfile {
   updatedAt        DateTime     @updatedAt
   user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   checkedOutOrders Order[]
+  auditEvents      AuditEvent[]
 }
 
 enum EmployeeRole {
   CASHIER
   MANAGER
   OWNER
+}
+
+/// Security/event log for sensitive staff actions.
+model AuditEvent {
+  id                Int      @id @default(autoincrement())
+  employeeProfileId Int?
+  action            String
+  entityType        String?
+  entityId          String?
+  metadata          Json?
+  ipAddress         String?
+  userAgent         String?
+  createdAt         DateTime @default(now())
+
+  employeeProfile EmployeeProfile? @relation(fields: [employeeProfileId], references: [id], onDelete: SetNull)
+
+  @@index([employeeProfileId, createdAt])
+  @@index([action, createdAt])
+  @@index([entityType, entityId])
 }
