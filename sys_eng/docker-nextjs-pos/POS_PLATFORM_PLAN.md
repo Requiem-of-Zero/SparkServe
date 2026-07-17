@@ -514,7 +514,7 @@ Status: 🟡 In progress
 - Shared cart add/remove/increment flows are built.
 - Kitchen submission exists.
 - Owner security toggle exists.
-- Kitchen-facing order queue is the next missing operations page.
+- Kitchen-facing order queue exists and is being wired into realtime updates.
 
 ### 🟡 9. Takeout Ordering Flow
 
@@ -536,7 +536,9 @@ Status: 🟡 In progress
 
 - Partly built.
 - Takeout page and Stripe checkout route exist.
-- Persisting takeout sessions/orders as durable records still needs completion.
+- Takeout checkout now persists submitted takeout sessions and items.
+- Takeout sessions can feed the kitchen queue.
+- Takeout customer status and receipt polish still need completion.
 
 ### 🟡 10. Checkout And Payments
 
@@ -564,7 +566,7 @@ Status: 🟡 In progress
 - Stripe Terminal/staff card reader flow is future work.
 - Final order closing and receipt/reporting polish are still needed.
 
-### ⬜ 11. Kitchen Queue
+### 🟡 11. Kitchen Queue
 
 Build the first restaurant operations screen.
 
@@ -589,11 +591,49 @@ Done when:
 - Takeout orders can appear in the same kitchen flow.
 - Customers and staff can see order status updates.
 
+Status: 🟡 In progress
+
+- Staff kitchen route exists at `/staff/kitchen`.
+- Dine-in and takeout order cards display submitted items, quantities, and context.
+- Staff can mark dine-in and takeout orders ready.
+- Realtime refresh wiring exists for kitchen queue invalidation events.
+- Remaining work: add richer status stages, better visual grouping, kitchen sounds/alerts, and customer-facing order status updates.
+
+### ⬜ 12. Customer Menu Item Customization
+
+Make menu item selection feel like a polished ordering app instead of a raw add button.
+
+Suggested surfaces:
+
+```text
+/
+/menu
+/takeout
+/table/[token]
+```
+
+Focus:
+
+- Clicking a menu item opens an animated item detail modal.
+- Modal shows item photo, description, price, quantity controls, ingredients, and common allergy warnings.
+- Allergy-prone ingredients should be highlighted clearly before the item is added.
+- Closed menu cards should still show a small allergy/customization indicator when relevant.
+- Customer can remove optional ingredients.
+- Customer can choose allowed swaps or replacements when the owner marks ingredients as swappable.
+- Selected removals/swaps/notes should be stored with the cart item and carried into kitchen orders.
+
+Done when:
+
+- A customer can inspect ingredients before adding an item.
+- Allergy indicators are visible both on the card and inside the modal.
+- Kitchen order cards show customer modifications clearly.
+
 Status: ⬜ Not started
 
-- This is the next planned build target.
+- Depends on the owner menu ingredient data that now exists.
+- This should be built before inventory so ingredient metadata has a customer-facing payoff first.
 
-### ⬜ 12. Staff Orders Dashboard
+### ⬜ 13. Staff Orders Dashboard
 
 Build the staff operations hub.
 
@@ -619,7 +659,7 @@ Status: ⬜ Not started
 
 - Build after the kitchen queue creates visible order operations.
 
-### ⬜ 13. Waitlist
+### ⬜ 14. Waitlist
 
 Build a host/waitlist flow based on table capacity.
 
@@ -648,7 +688,7 @@ Status: ⬜ Not started
 
 - Build after staff orders and waitlist so the floor view can summarize real operational state.
 
-### ⬜ 14. Table Floor View
+### ⬜ 15. Table Floor View
 
 Build a table status board for employees.
 
@@ -673,7 +713,7 @@ Status: ⬜ Not started
 
 - Depends on active table, order, and waitlist data being stable enough to configure.
 
-### ⬜ 15. Owner Menu And Restaurant Settings
+### 🟡 16. Owner Menu And Restaurant Settings
 
 Make the restaurant self-service for owners.
 
@@ -699,11 +739,14 @@ Done when:
 
 - A restaurant owner can set up and modify the business basics from the UI.
 
-Status: ⬜ Not started
+Status: 🟡 In progress
 
+- Owner menu management exists at `/owner/menu`.
+- Owners can create/edit menu items and attach ingredients.
+- Restaurant theme/logo/menu PDF/settings still need fuller owner-facing controls.
 - Build after basic staff operations so rewards can connect to real paid orders.
 
-### ⬜ 16. Loyalty Rules And Rewards
+### ⬜ 17. Loyalty Rules And Rewards
 
 Build the full rewards system on top of customer membership.
 
@@ -725,7 +768,7 @@ Status: ⬜ Not started
 
 - Build after checkout, kitchen, and order completion flows are stable.
 
-### ⬜ 17. Reports And CSV Exports
+### ⬜ 18. Reports And CSV Exports
 
 Create simple business reporting before advanced analytics.
 
@@ -751,7 +794,7 @@ Status: ⬜ Not started
 
 - Needs finalized production database workflow.
 
-### 🔮 18. Backups
+### 🔮 19. Backups
 
 Protect restaurant data.
 
@@ -770,7 +813,7 @@ Status: 🔮 Later
 
 - Important before real customer production usage.
 
-### 🔮 19. Monitoring And Hardening
+### 🔮 20. Monitoring And Hardening
 
 Improve operations after core app works.
 
