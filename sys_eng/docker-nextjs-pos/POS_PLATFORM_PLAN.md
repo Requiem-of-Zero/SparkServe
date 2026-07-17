@@ -23,9 +23,9 @@ The same app code can be deployed to many restaurants, but each restaurant owns 
 
 ## Competitive Context
 
-Ember is being shaped as a lightweight, self-hostable restaurant ordering and POS platform for small restaurants that want modern QR ordering, takeout ordering, staff tools, and payments without adopting a large all-in-one vendor stack on day one.
+Ablaze is being shaped as a lightweight, self-hostable restaurant ordering and POS platform for small restaurants that want modern QR ordering, takeout ordering, staff tools, and payments without adopting a large all-in-one vendor stack on day one.
 
-Compared with a mature platform like Chowbus, Ember already has the beginning of the same core product pillars:
+Compared with a mature platform like Chowbus, Ablaze already has the beginning of the same core product pillars:
 
 - restaurant storefront and takeout entry point
 - QR/table session ordering
@@ -39,7 +39,7 @@ Compared with a mature platform like Chowbus, Ember already has the beginning of
 
 The gap is not the basic ordering idea anymore. The remaining gap is restaurant operations depth. Chowbus-like systems become valuable because staff can run the restaurant from them all day: kitchen display, order status, waitlist, table management, menu editing, reporting, refunds, hardware payments, and customer marketing.
 
-For a first restaurant sales pitch, Ember should aim to prove:
+For a first restaurant sales pitch, Ablaze should aim to prove:
 
 ```text
 customer orders -> kitchen sees it -> staff manages it -> customer pays -> owner can review sales
@@ -60,7 +60,7 @@ Do not require QR customers to be permanent users at first. They are temporary t
 Later, customers can optionally sign up or log in through the customer portal to become members. A member account should be separate from staff authorization:
 
 - customer/member accounts can view order history and loyalty points
-- employee accounts can access POS/admin tools through `EmployeeProfile`
+- employee accounts can access POS and owner/staff tools through `EmployeeProfile`
 - customers should never get an `EmployeeProfile`
 
 Employee login is also the foundation for accountability. Any sensitive staff action should eventually be tied to an employee account, especially when cash handling is added.
@@ -126,7 +126,7 @@ createdAt
 updatedAt
 ```
 
-`AuditEvent` should later store sensitive staff activity:
+`AuditEvent` stores sensitive staff activity:
 
 ```text
 employeeProfileId
@@ -255,7 +255,7 @@ MenuItemTranslation
   description
 ```
 
-The POS/admin interface can start in English only. The customer QR ordering flow should eventually allow language switching.
+The POS and owner/staff interfaces can start in English only. The customer QR ordering flow should eventually allow language switching.
 
 Example customer URLs:
 
@@ -310,7 +310,7 @@ Reward redemption should be validated server-side. A customer should not be able
 
 ## Build Order
 
-Build the restaurant operations loop before adding more polish. The early steps establish identity, menu data, QR sessions, realtime ordering, and checkout. After that, the sequence shifts into Chowbus-like restaurant operations: kitchen queue, staff dashboard, waitlist, floor view, admin controls, and reporting.
+Build the restaurant operations loop before adding more polish. The early steps establish identity, menu data, QR sessions, realtime ordering, and checkout. After that, the sequence shifts into Chowbus-like restaurant operations: kitchen queue, staff dashboard, waitlist, floor view, owner controls, and reporting.
 
 Status key:
 
@@ -371,7 +371,7 @@ Focus:
 - Email/password or username/password login for employees.
 - Session cookie support.
 - Sign in and sign out routes.
-- Protect POS and admin pages.
+- Protect POS, staff, and owner pages.
 - Tie Better Auth users to `EmployeeProfile`.
 - Use employee roles for access control.
 
@@ -388,9 +388,9 @@ Status: ✅ Done
 - Employee login uses private 6-digit login codes.
 - Employee profiles store hire/resign dates and role data.
 
-### ✅ 4. Employee Admin
+### ✅ 4. Employee Management
 
-Build the first owner/admin workflow.
+Build the first owner workflow.
 
 Focus:
 
@@ -412,9 +412,12 @@ Future improvement:
 
 Status: ✅ Done
 
-- Built as a basic admin workflow.
+- Built as a basic owner workflow.
 - Owner can create employees and regenerate employee login codes.
-- More polished employee management and audit logs are still future work.
+- Basic audit logging exists for employee creation/code rotation and owner menu changes.
+- Owner can review recent staff-sensitive actions at `/owner/audit`.
+- Generic account redirects send employees to `/staff` and customers to `/customer/account`.
+- More polished employee management and broader audit coverage are still future work.
 
 ### 🟡 5. Menu Management
 
@@ -436,7 +439,10 @@ Status: 🟡 In progress
 - Partly built.
 - Seeded menu data is in Postgres.
 - Customer-facing menu and takeout pages use database menu items.
-- Owner/admin menu editing is still needed.
+- Owner menu editing has started at `/owner/menu`.
+- Reusable ingredients can be attached to menu items for allergy visibility and future inventory.
+- Image upload should replace raw image paths later using object storage such as S3 or Cloudflare R2.
+- More polished translations, modifiers, image uploads, and bulk editing are still needed.
 
 ### 🟡 6. Customer Membership And Loyalty Foundation
 
@@ -667,22 +673,23 @@ Status: ⬜ Not started
 
 - Depends on active table, order, and waitlist data being stable enough to configure.
 
-### ⬜ 15. Admin Menu And Restaurant Settings
+### ⬜ 15. Owner Menu And Restaurant Settings
 
 Make the restaurant self-service for owners.
 
 Suggested routes:
 
 ```text
-/admin/menu
-/admin/settings
-/admin/payments
-/admin/loyalty
+/owner/menu
+/owner/settings
+/owner/payments
+/owner/loyalty
 ```
 
 Focus:
 
 - Edit menu items, categories, prices, photos, and availability.
+- Upload menu item photos without requiring owners to paste image URLs.
 - Configure table layout and table capacity.
 - Configure Stripe connected account.
 - Configure restaurant theme, logo, and menu PDF.
@@ -725,7 +732,7 @@ Create simple business reporting before advanced analytics.
 Suggested route:
 
 ```text
-/admin/reports
+/owner/reports
 ```
 
 Focus:
