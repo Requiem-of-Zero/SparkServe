@@ -60,6 +60,9 @@ export default async function Home() {
             <RestaurantBrandLink
               logoUrl={restaurant?.logoUrl}
               name={restaurantName}
+              animated
+              markClassName="h-12 w-12"
+              textClassName="text-xl"
             />
             <div className="flex gap-2 text-sm">
               {isLoggedIn ? (
@@ -104,10 +107,10 @@ export default async function Home() {
                 {restaurantName}
               </p>
               <h1 className="mt-4 text-5xl font-bold leading-tight md:text-7xl">
-                Order fresh takeout with Ablaze.
+                Order fresh favorites from {restaurantName}.
               </h1>
               <p className="mt-5 max-w-xl text-lg text-zinc-200">
-                Browse the menu, build a shared cart, and check out with card.
+                Browse the menu, build a takeout cart, and check out with card.
                 Members can sign in for rewards while guests can order fast.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
@@ -137,8 +140,8 @@ export default async function Home() {
             </h2>
             <p className="mt-2 max-w-2xl text-zinc-300">
               {isLoggedIn
-                ? `Welcome back${displayName ? `, ${displayName}` : ""}. Ablaze can connect paid orders to loyalty points, member history, and restaurant rewards.`
-                : "Create an account once and Ablaze can connect future paid orders to loyalty points, member history, and restaurant rewards."}
+                ? `Welcome back${displayName ? `, ${displayName}` : ""}. ${restaurantName} can connect paid orders to loyalty points, member history, and restaurant rewards.`
+                : `Create an account once and ${restaurantName} can connect future paid orders to loyalty points, member history, and restaurant rewards.`}
             </p>
             {customerProfile ? (
               <p className="mt-3 text-sm font-semibold text-[#ffd166]">
