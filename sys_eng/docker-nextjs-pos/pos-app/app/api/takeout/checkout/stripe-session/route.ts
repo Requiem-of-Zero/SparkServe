@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
       process.env.STRIPE_CONNECTED_ACCOUNT_ID;
     const paymentIntentData: Stripe.Checkout.SessionCreateParams.PaymentIntentData =
       {
-        description: "Ember takeout order",
+        description: "Ablaze takeout order",
         metadata: {
           checkoutType: "takeout",
           menuItemIds: menuItems.map((item) => item.id).join(","),

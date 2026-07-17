@@ -1,8 +1,9 @@
 import Link from "next/link";
 
-import { AblazeMark } from "@/app/components/ablaze-mark";
 import { LogoutButton } from "@/app/components/logout-button";
+import { RestaurantBrandLink } from "@/app/components/restaurant-brand-link";
 import { requireActiveEmployee } from "@/lib/employee-auth";
+import { prisma } from "@/lib/prisma";
 
 const staffActions = [
   {
@@ -90,18 +91,23 @@ const ownerActions = [
 
 export default async function StaffPage() {
   // Staff dashboard is protected by the active employee profile, not by customer auth.
-  const employee = await requireActiveEmployee();
+  const [employee, restaurant] = await Promise.all([
+    requireActiveEmployee(),
+    prisma.restaurantSettings.findUnique({ where: { id: 1 } }),
+  ]);
   const isOwner = employee.role === "OWNER";
+  const restaurantName = restaurant?.name ?? "Restaurant";
 
   return (
     <main className="min-h-screen bg-[#100b0b] px-4 py-8 text-[#fff7ed] sm:px-6">
       <section className="mx-auto max-w-6xl">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <Link href="/" className="inline-flex items-center gap-3">
-              <AblazeMark className="h-9 w-9" />
-              <span className="text-lg font-semibold">Ablaze</span>
-            </Link>
+            <RestaurantBrandLink
+              logoUrl={restaurant?.logoUrl}
+              name={restaurantName}
+              markClassName="h-9 w-9"
+            />
             <p className="mt-5 text-sm uppercase tracking-[0.22em] text-[#ffd166]">
               {isOwner ? "Owner workspace" : "Staff workspace"}
             </p>

@@ -1,16 +1,25 @@
 import Link from "next/link";
 
+import { RestaurantBrandLink } from "@/app/components/restaurant-brand-link";
 import { SocialLoginButtons } from "@/app/customer/components/social-login-buttons";
 import { customerSignUpAction } from "@/app/customer/signup/actions";
+import { prisma } from "@/lib/prisma";
 import { customerSocialProviders } from "@/lib/social-providers";
 
-export default function CustomerSignupPage() {
+export default async function CustomerSignupPage() {
+  const restaurant = await prisma.restaurantSettings.findUnique({
+    where: { id: 1 },
+  });
+  const restaurantName = restaurant?.name ?? "Restaurant";
+
   return (
     <main className="min-h-screen bg-zinc-950 px-6 py-12 text-white">
       <section className="mx-auto max-w-md">
-        <Link href="/" className="text-sm text-zinc-400 hover:text-white">
-          Back to menu
-        </Link>
+        <RestaurantBrandLink
+          logoUrl={restaurant?.logoUrl}
+          name={restaurantName}
+          markClassName="h-9 w-9"
+        />
 
         <h1 className="mt-8 text-3xl font-bold">Create Member Account</h1>
         <p className="mt-2 text-zinc-400">
@@ -19,7 +28,7 @@ export default function CustomerSignupPage() {
 
         <SocialLoginButtons
           providers={customerSocialProviders}
-          callbackURL="/customer/account"
+          callbackURL="/account"
         />
 
         <form action={customerSignUpAction} className="mt-8 space-y-4">

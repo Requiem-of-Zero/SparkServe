@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ember",
+  title: "Ablaze",
   description: "Restaurant ordering, table sessions, and loyalty rewards.",
   icons: {
     icon: "/icon.png",

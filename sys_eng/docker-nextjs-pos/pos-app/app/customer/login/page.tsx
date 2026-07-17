@@ -1,7 +1,9 @@
 import Link from "next/link";
 
+import { RestaurantBrandLink } from "@/app/components/restaurant-brand-link";
 import { SocialLoginButtons } from "@/app/customer/components/social-login-buttons";
 import { CustomerLoginForm } from "@/app/customer/login/customer-login-form";
+import { prisma } from "@/lib/prisma";
 import { customerSocialProviders } from "@/lib/social-providers";
 
 type CustomerLoginPageProps = {
@@ -19,14 +21,20 @@ export default async function CustomerLoginPage({
   const returnTo =
     params?.returnTo?.startsWith("/") && !params.returnTo.startsWith("//")
       ? params.returnTo
-      : "/customer/account";
+      : "/account";
+  const restaurant = await prisma.restaurantSettings.findUnique({
+    where: { id: 1 },
+  });
+  const restaurantName = restaurant?.name ?? "Restaurant";
 
   return (
     <main className="min-h-screen bg-zinc-950 px-6 py-12 text-white">
       <section className="mx-auto max-w-md">
-        <Link href="/" className="text-sm text-zinc-400 hover:text-white">
-          Back to menu
-        </Link>
+        <RestaurantBrandLink
+          logoUrl={restaurant?.logoUrl}
+          name={restaurantName}
+          markClassName="h-9 w-9"
+        />
 
         <h1 className="mt-8 text-3xl font-bold">Member Login</h1>
         <p className="mt-2 text-zinc-400">

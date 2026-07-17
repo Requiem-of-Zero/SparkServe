@@ -7,6 +7,7 @@ import {
   rotateSelectedEmployeeCodesAction,
 } from "@/app/owner/employees/actions";
 import { LogoutButton } from "@/app/components/logout-button";
+import { RestaurantBrandLink } from "@/app/components/restaurant-brand-link";
 import { getCurrentEmployee } from "@/lib/employee-auth";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -26,13 +27,22 @@ type EmployeePageProps = {
 export default async function EmployeesPage({ searchParams }: EmployeePageProps) {
   const params = await searchParams;
   // The first owner is bootstrapped before normal owner-only protections exist.
-  const ownerExists = Boolean(
-    await prisma.employeeProfile.findFirst({ where: { role: "OWNER" } }),
-  );
-  const currentEmployee = await getCurrentEmployee();
+  const [ownerProfile, currentEmployee, restaurant] = await Promise.all([
+    prisma.employeeProfile.findFirst({ where: { role: "OWNER" } }),
+    getCurrentEmployee(),
+    prisma.restaurantSettings.findUnique({ where: { id: 1 } }),
+  ]);
+  const ownerExists = Boolean(ownerProfile);
+  const restaurantName = restaurant?.name ?? "Restaurant";
 
   if (!ownerExists) {
-    return <BootstrapOwnerScreen createdCode={params?.created} />;
+    return (
+      <BootstrapOwnerScreen
+        createdCode={params?.created}
+        logoUrl={restaurant?.logoUrl}
+        restaurantName={restaurantName}
+      />
+    );
   }
 
   if (
@@ -69,6 +79,11 @@ export default async function EmployeesPage({ searchParams }: EmployeePageProps)
       <section className="mx-auto max-w-5xl">
         <div className="flex items-center justify-between gap-4">
           <div>
+            <RestaurantBrandLink
+              logoUrl={restaurant?.logoUrl}
+              name={restaurantName}
+              markClassName="h-9 w-9"
+            />
             <Link href="/staff" className="text-sm text-zinc-400 hover:text-white">
               Back to staff dashboard
             </Link>
@@ -109,11 +124,24 @@ export default async function EmployeesPage({ searchParams }: EmployeePageProps)
   );
 }
 
-function BootstrapOwnerScreen({ createdCode }: { createdCode?: string }) {
+function BootstrapOwnerScreen({
+  createdCode,
+  logoUrl,
+  restaurantName,
+}: {
+  createdCode?: string;
+  logoUrl?: string | null;
+  restaurantName: string;
+}) {
   // First-run setup screen for a fresh restaurant database.
   return (
     <main className="min-h-screen bg-zinc-950 px-6 py-12 text-white">
       <section className="mx-auto max-w-md">
+        <RestaurantBrandLink
+          logoUrl={logoUrl}
+          name={restaurantName}
+          markClassName="h-9 w-9"
+        />
         <h1 className="text-3xl font-bold">Create the owner account</h1>
         <p className="mt-2 text-zinc-400">
           This only appears before the first owner exists in the restaurant database.

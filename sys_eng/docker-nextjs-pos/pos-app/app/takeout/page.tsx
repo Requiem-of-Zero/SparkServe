@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { EmberMark } from "@/app/components/ember-mark";
+import { RestaurantBrandLink } from "@/app/components/restaurant-brand-link";
 import { SiteFooter } from "@/app/components/site-footer";
 import { prisma } from "@/lib/prisma";
 
@@ -12,6 +12,7 @@ export default async function TakeoutPage() {
   const restaurant = await prisma.restaurantSettings.findUnique({
     where: { id: 1 },
   });
+  const restaurantName = restaurant?.name ?? "Restaurant";
   const locale = restaurant?.defaultLocale ?? "en";
   const menuItems = await prisma.menuItem.findMany({
     where: { active: true },
@@ -40,10 +41,10 @@ export default async function TakeoutPage() {
     <main className="min-h-screen bg-[#100b0b] text-[#fff7ed]">
       <header className="border-b border-orange-950/60 bg-[#1a0f0b] px-5 py-4">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
-          <Link href="/" className="flex items-center gap-3 font-bold">
-            <EmberMark className="h-9 w-9" />
-            <span>Ember</span>
-          </Link>
+          <RestaurantBrandLink
+            logoUrl={restaurant?.logoUrl}
+            name={restaurantName}
+          />
           <Link
             href="/menu"
             className="rounded-md border border-orange-200/25 px-3 py-2 text-sm hover:bg-orange-100/10"
@@ -55,7 +56,7 @@ export default async function TakeoutPage() {
 
       <section className="mx-auto max-w-6xl px-5 pt-8">
         <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#ffd166]">
-          {restaurant?.name ?? "Restaurant"}
+          {restaurantName}
         </p>
         <h1 className="mt-3 text-4xl font-bold">Start a takeout order</h1>
         <p className="mt-3 max-w-2xl text-zinc-300">
@@ -65,7 +66,7 @@ export default async function TakeoutPage() {
       </section>
 
       <TakeoutOrderClient menuItems={takeoutMenuItems} />
-      <SiteFooter restaurantName={restaurant?.name} />
+      <SiteFooter restaurantName={restaurantName} />
     </main>
   );
 }

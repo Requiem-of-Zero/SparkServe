@@ -5,6 +5,7 @@ import {
   upsertMenuItemAction,
 } from "@/app/owner/menu/actions";
 import { LogoutButton } from "@/app/components/logout-button";
+import { RestaurantBrandLink } from "@/app/components/restaurant-brand-link";
 import { requireOwner } from "@/lib/employee-auth";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -43,7 +44,7 @@ export default async function OwnerMenuPage({ searchParams }: MenuPageProps) {
 
   const params = await searchParams;
   // Load menu items and the reusable ingredient catalog together for the editor.
-  const [menuItems, ingredients] = await Promise.all([
+  const [menuItems, ingredients, restaurant] = await Promise.all([
     prisma.menuItem.findMany({
       orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
       include: {
@@ -57,13 +58,20 @@ export default async function OwnerMenuPage({ searchParams }: MenuPageProps) {
     prisma.ingredient.findMany({
       orderBy: [{ commonAllergen: "desc" }, { name: "asc" }],
     }),
+    prisma.restaurantSettings.findUnique({ where: { id: 1 } }),
   ]);
+  const restaurantName = restaurant?.name ?? "Restaurant";
 
   return (
     <main className="min-h-screen bg-zinc-950 px-4 py-8 text-white sm:px-6">
       <section className="mx-auto max-w-7xl">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
+            <RestaurantBrandLink
+              logoUrl={restaurant?.logoUrl}
+              name={restaurantName}
+              markClassName="h-9 w-9"
+            />
             <Link
               href="/owner/employees"
               className="text-sm text-zinc-400 hover:text-white"
