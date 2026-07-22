@@ -56,6 +56,7 @@ const demoMenuItems = [
     id: 1,
     priceCents: 1399,
     categoryKey: "noodles",
+    spicy: true,
     sortOrder: 10,
     imageUrl:
       "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=900&q=80",
@@ -81,6 +82,7 @@ const demoMenuItems = [
     id: 2,
     priceCents: 499,
     categoryKey: "drinks",
+    spicy: false,
     sortOrder: 80,
     imageUrl:
       "https://images.unsplash.com/photo-1558857563-b371033873b8?auto=format&fit=crop&w=900&q=80",
@@ -106,6 +108,7 @@ const demoMenuItems = [
     id: 3,
     priceCents: 899,
     categoryKey: "appetizers",
+    spicy: false,
     sortOrder: 20,
     imageUrl:
       "https://images.unsplash.com/photo-1496116218417-1a781b1c416c?auto=format&fit=crop&w=900&q=80",
@@ -131,6 +134,7 @@ const demoMenuItems = [
     id: 4,
     priceCents: 1599,
     categoryKey: "rice",
+    spicy: false,
     sortOrder: 30,
     imageUrl:
       "https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=900&q=80",
@@ -156,6 +160,7 @@ const demoMenuItems = [
     id: 5,
     priceCents: 1799,
     categoryKey: "seafood",
+    spicy: true,
     sortOrder: 40,
     imageUrl:
       "https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&w=900&q=80",
@@ -181,6 +186,7 @@ const demoMenuItems = [
     id: 6,
     priceCents: 699,
     categoryKey: "desserts",
+    spicy: false,
     sortOrder: 90,
     imageUrl:
       "https://images.unsplash.com/photo-1551024506-0bccd828d307?auto=format&fit=crop&w=900&q=80",
@@ -413,6 +419,7 @@ async function seedDemoMenuItems() {
         id: item.id,
         priceCents: item.priceCents,
         categoryKey: item.categoryKey,
+        spicy: item.spicy,
         sortOrder: item.sortOrder,
         imageUrl: item.imageUrl,
         active: true,
@@ -430,7 +437,10 @@ async function seedDemoMenuItems() {
 
               return {
                 ingredientId,
-                removable: true,
+                removable:
+                  demoIngredients.find(
+                    (ingredient) => ingredient.name === ingredientName,
+                  )?.commonAllergen ?? false,
                 swappable: false,
                 sortOrder: index * 10,
               };
