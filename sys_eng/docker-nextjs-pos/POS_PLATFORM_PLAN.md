@@ -441,8 +441,9 @@ Status: 🟡 In progress
 - Customer-facing menu and takeout pages use database menu items.
 - Owner menu editing has started at `/owner/menu`.
 - Reusable ingredients can be attached to menu items for allergy visibility and future inventory.
-- Image upload should replace raw image paths later using object storage such as S3 or Cloudflare R2.
-- More polished translations, modifiers, image uploads, and bulk editing are still needed.
+- Menu item image upload is backed by Cloudflare R2 when storage env vars are configured.
+- Category keys are derived from owner-friendly category labels.
+- More polished translations, modifier swaps, and bulk editing are still needed.
 
 ### 🟡 6. Customer Membership And Loyalty Foundation
 
@@ -599,7 +600,7 @@ Status: 🟡 In progress
 - Realtime refresh wiring exists for kitchen queue invalidation events.
 - Remaining work: add richer status stages, better visual grouping, kitchen sounds/alerts, and customer-facing order status updates.
 
-### ⬜ 12. Customer Menu Item Customization
+### 🟡 12. Customer Menu Item Customization
 
 Make menu item selection feel like a polished ordering app instead of a raw add button.
 
@@ -628,10 +629,12 @@ Done when:
 - Allergy indicators are visible both on the card and inside the modal.
 - Kitchen order cards show customer modifications clearly.
 
-Status: ⬜ Not started
+Status: 🟡 In progress
 
-- Depends on the owner menu ingredient data that now exists.
-- This should be built before inventory so ingredient metadata has a customer-facing payoff first.
+- Animated item detail modals exist for homepage/menu preview, takeout, and table ordering.
+- Modal shows ingredients, allergy flags, allergen-only removal options, quantity, and structured spice levels for spicy items.
+- Table and takeout cart lines store structured kitchen instructions and removed allergen names for kitchen display.
+- Remaining work: ingredient swaps, richer modifier groups, and tighter mobile UI polish.
 
 ### ⬜ 13. Staff Orders Dashboard
 
