@@ -2,40 +2,47 @@
 
 import { useMemo, useState } from "react";
 
+import { MenuItemDetailModal } from "@/app/components/menu-item-detail-modal";
+import {
+  formatMenuPrice,
+  type CustomerMenuItem,
+  type MenuItemCustomization,
+} from "@/lib/menu-display";
 import {
   calculateTakeoutSubtotalCents,
   type TakeoutCartLine,
 } from "@/lib/takeout-session";
-
-type TakeoutMenuItem = {
-  id: number;
-  priceCents: number;
-  categoryKey: string | null;
-  imageUrl: string | null;
-  name: string;
-  description: string | null;
-  category: string;
-};
-
-function formatPrice(priceCents: number) {
-  return `$${(priceCents / 100).toFixed(2)}`;
-}
 
 type CheckoutResponse = {
   message?: string;
   url?: string;
 };
 
+function createLineId({
+  menuItemId,
+  note,
+  removedIngredientIds,
+}: {
+  menuItemId: number;
+  note: string;
+  removedIngredientIds: number[];
+}) {
+  return [
+    menuItemId,
+    note.trim().toLowerCase(),
+    [...removedIngredientIds].sort((a, b) => a - b).join("."),
+  ].join(":");
+}
+
 // Customer takeout cart. This is intentionally not tied to table-session
 // sockets because takeout is a private cart for one customer.
 export function TakeoutOrderClient({
   menuItems,
 }: {
-  menuItems: TakeoutMenuItem[];
+  menuItems: CustomerMenuItem[];
 }) {
   const [activeCategory, setActiveCategory] = useState("all");
   const [cartLines, setCartLines] = useState<TakeoutCartLine[]>([]);
-  const [itemQuantities, setItemQuantities] = useState<Record<number, number>>({});
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const categories = useMemo(() => {
@@ -53,29 +60,27 @@ export function TakeoutOrderClient({
       : menuItems.filter((item) => (item.categoryKey ?? "menu") === activeCategory);
   const subtotalCents = calculateTakeoutSubtotalCents(cartLines);
 
-  function getSelectedQuantity(menuItemId: number) {
-    return itemQuantities[menuItemId] ?? 1;
-  }
-
-  function changeSelectedQuantity(menuItemId: number, nextQuantity: number) {
-    setItemQuantities((currentQuantities) => ({
-      ...currentQuantities,
-      [menuItemId]: Math.min(20, Math.max(1, nextQuantity)),
-    }));
-  }
-
-  function addItem(item: TakeoutMenuItem) {
-    const quantityToAdd = getSelectedQuantity(item.id);
+  function addItem(item: CustomerMenuItem, customization: MenuItemCustomization) {
+    const removedIngredientNames = item.ingredients
+      .filter((ingredient) =>
+        customization.removedIngredientIds.includes(ingredient.id),
+      )
+      .map((ingredient) => ingredient.name);
+    const lineId = createLineId({
+      menuItemId: item.id,
+      note: customization.note,
+      removedIngredientIds: customization.removedIngredientIds,
+    });
 
     setCartLines((currentLines) => {
-      const existingLine = currentLines.find((line) => line.menuItemId === item.id);
+      const existingLine = currentLines.find((line) => line.id === lineId);
 
       if (existingLine) {
         return currentLines.map((line) =>
-          line.menuItemId === item.id
+          line.id === lineId
             ? {
                 ...line,
-                quantity: Math.min(line.quantity + quantityToAdd, 20),
+                quantity: Math.min(line.quantity + customization.quantity, 20),
               }
             : line,
         );
@@ -84,19 +89,23 @@ export function TakeoutOrderClient({
       return [
         ...currentLines,
         {
+          id: lineId,
           menuItemId: item.id,
           name: item.name,
           priceCents: item.priceCents,
-          quantity: quantityToAdd,
+          quantity: customization.quantity,
+          note: customization.note,
+          removedIngredientIds: customization.removedIngredientIds,
+          removedIngredientNames,
         },
       ];
     });
   }
 
-  function changeQuantity(menuItemId: number, nextQuantity: number) {
+  function changeQuantity(lineId: string, nextQuantity: number) {
     setCartLines((currentLines) =>
       currentLines.flatMap((line) => {
-        if (line.menuItemId !== menuItemId) {
+        if (line.id !== lineId) {
           return [line];
         }
 
@@ -123,6 +132,8 @@ export function TakeoutOrderClient({
           items: cartLines.map((line) => ({
             menuItemId: line.menuItemId,
             quantity: line.quantity,
+            note: line.note,
+            removedIngredientIds: line.removedIngredientIds,
           })),
         }),
       });
@@ -212,49 +223,38 @@ export function TakeoutOrderClient({
                     <p className="mt-2 text-xs text-zinc-500">{item.category}</p>
                   </div>
                   <p className="shrink-0 text-sm font-semibold text-[#ffd166]">
-                    {formatPrice(item.priceCents)}
+                    {formatMenuPrice(item.priceCents)}
                   </p>
                 </div>
 
                 <div className="mt-3 flex items-center justify-end gap-2">
-                  <div className="flex h-9 items-center rounded-md border border-orange-200/25">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        changeSelectedQuantity(
-                          item.id,
-                          getSelectedQuantity(item.id) - 1,
-                        )
-                      }
-                      className="h-9 w-9 text-sm font-semibold hover:bg-orange-100/10"
-                      aria-label={`Decrease ${item.name} quantity`}
-                    >
-                      -
-                    </button>
-                    <span className="w-8 text-center text-sm">
-                      {getSelectedQuantity(item.id)}
+                  {item.ingredients.some(
+                    (ingredient) => ingredient.commonAllergen,
+                  ) ? (
+                    <span className="mr-auto rounded-full border border-amber-500/40 px-2 py-1 text-xs text-amber-200">
+                      Allergy info
                     </span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        changeSelectedQuantity(
-                          item.id,
-                          getSelectedQuantity(item.id) + 1,
-                        )
-                      }
-                      className="h-9 w-9 text-sm font-semibold hover:bg-orange-100/10"
-                      aria-label={`Increase ${item.name} quantity`}
-                    >
-                      +
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => addItem(item)}
-                    className="h-9 rounded-md bg-[#ff6a1a] px-3 text-sm font-semibold text-[#160b08] hover:bg-[#ffd166]"
+                  ) : item.spicy ? (
+                    <span className="mr-auto rounded-full border border-orange-500/40 px-2 py-1 text-xs text-orange-200">
+                      Spice options
+                    </span>
+                  ) : item.ingredients.some(
+                      (ingredient) =>
+                        ingredient.commonAllergen && ingredient.removable,
+                    ) ? (
+                    <span className="mr-auto rounded-full border border-emerald-500/30 px-2 py-1 text-xs text-emerald-200">
+                      Customizable
+                    </span>
+                  ) : null}
+                  <MenuItemDetailModal
+                    item={item}
+                    addLabel="Add to takeout cart"
+                    onAdd={(customization) => addItem(item, customization)}
                   >
-                    Add
-                  </button>
+                    <span className="inline-flex h-9 items-center rounded-md bg-[#ff6a1a] px-3 text-sm font-semibold text-[#160b08] hover:bg-[#ffd166]">
+                      Customize
+                    </span>
+                  </MenuItemDetailModal>
                 </div>
               </div>
             </article>
@@ -272,25 +272,35 @@ export function TakeoutOrderClient({
           ) : (
             cartLines.map((line) => (
               <div
-                key={line.menuItemId}
+                key={line.id}
                 className="rounded-md border border-orange-950/60 bg-[#100b0b] p-3"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-medium">{line.name}</p>
                     <p className="mt-1 text-sm text-zinc-400">
-                      {formatPrice(line.priceCents)} each
+                      {formatMenuPrice(line.priceCents)} each
                     </p>
+                    {line.removedIngredientNames.length > 0 ? (
+                      <p className="mt-1 text-xs text-amber-200">
+                        No {line.removedIngredientNames.join(", ")}
+                      </p>
+                    ) : null}
+                    {line.note ? (
+                      <p className="mt-1 text-xs text-zinc-500">
+                        Note: {line.note}
+                      </p>
+                    ) : null}
                   </div>
                   <p className="font-semibold text-[#ffd166]">
-                    {formatPrice(line.priceCents * line.quantity)}
+                    {formatMenuPrice(line.priceCents * line.quantity)}
                   </p>
                 </div>
                 <div className="mt-3 flex items-center justify-end gap-2">
                   <button
                     type="button"
                     onClick={() =>
-                      changeQuantity(line.menuItemId, line.quantity - 1)
+                      changeQuantity(line.id, line.quantity - 1)
                     }
                     className="h-8 w-8 rounded-md border border-orange-200/25 text-sm"
                     aria-label={`Remove one ${line.name}`}
@@ -301,7 +311,7 @@ export function TakeoutOrderClient({
                   <button
                     type="button"
                     onClick={() =>
-                      changeQuantity(line.menuItemId, line.quantity + 1)
+                      changeQuantity(line.id, line.quantity + 1)
                     }
                     className="h-8 w-8 rounded-md border border-orange-200/25 text-sm"
                     aria-label={`Add one ${line.name}`}
@@ -317,7 +327,7 @@ export function TakeoutOrderClient({
         <div className="mt-5 border-t border-orange-950/60 pt-4">
           <div className="flex items-center justify-between font-semibold">
             <span>Subtotal</span>
-            <span>{formatPrice(subtotalCents)}</span>
+            <span>{formatMenuPrice(subtotalCents)}</span>
           </div>
           <button
             type="button"

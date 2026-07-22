@@ -21,6 +21,10 @@ export default async function TakeoutPage() {
       translations: {
         where: { locale },
       },
+      ingredients: {
+        orderBy: [{ sortOrder: "asc" }, { ingredient: { name: "asc" } }],
+        include: { ingredient: true },
+      },
     },
   });
   const takeoutMenuItems = menuItems.map((item) => {
@@ -31,9 +35,17 @@ export default async function TakeoutPage() {
       priceCents: item.priceCents,
       categoryKey: item.categoryKey,
       imageUrl: item.imageUrl,
+      spicy: item.spicy,
       name: translation?.name ?? `Menu item #${item.id}`,
       description: translation?.description ?? null,
       category: translation?.category ?? item.categoryKey ?? "Menu",
+      ingredients: item.ingredients.map((entry) => ({
+        id: entry.ingredient.id,
+        name: entry.ingredient.name,
+        commonAllergen: entry.ingredient.commonAllergen,
+        allergenNote: entry.ingredient.allergenNote,
+        removable: entry.removable,
+      })),
     };
   });
 
