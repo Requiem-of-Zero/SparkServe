@@ -1,8 +1,12 @@
 export type TakeoutCartLine = {
+  id: string;
   menuItemId: number;
   name: string;
   priceCents: number;
   quantity: number;
+  note: string;
+  removedIngredientIds: number[];
+  removedIngredientNames: string[];
 };
 
 // Takeout is intentionally separate from table sessions: one customer, one cart,
