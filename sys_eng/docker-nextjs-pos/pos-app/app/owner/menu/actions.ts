@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { writeAuditEvent } from "@/lib/audit-log";
 import { requireOwner } from "@/lib/employee-auth";
+import { uploadMenuImageToR2 } from "@/lib/menu-image-storage";
 import { prisma } from "@/lib/prisma";
 
 // Small form readers keep server actions focused on menu behavior instead of parsing.
@@ -53,6 +54,20 @@ function readPriceCents(formData: FormData) {
   return Math.round(price * 100);
 }
 
+function toCategoryKey(categoryLabel: string | null) {
+  if (!categoryLabel) {
+    return null;
+  }
+
+  return (
+    categoryLabel
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || null
+  );
+}
+
 function readIdSet(formData: FormData, key: string) {
   return new Set(
     formData
@@ -60,6 +75,16 @@ function readIdSet(formData: FormData, key: string) {
       .map((value) => Number(value))
       .filter((value) => Number.isInteger(value) && value > 0),
   );
+}
+
+function readOptionalFile(formData: FormData, key: string) {
+  const value = formData.get(key);
+
+  if (!(value instanceof File) || value.size === 0) {
+    return null;
+  }
+
+  return value;
 }
 
 // Replaces the whole ingredient mapping for a menu item so unchecked boxes are removed.
@@ -74,6 +99,17 @@ async function replaceMenuItemIngredients({
   removableIngredientIds: Set<number>;
   swappableIngredientIds: Set<number>;
 }) {
+  const allergenIngredients = await prisma.ingredient.findMany({
+    where: {
+      id: { in: Array.from(ingredientIds) },
+      commonAllergen: true,
+    },
+    select: { id: true },
+  });
+  const allergenIngredientIds = new Set(
+    allergenIngredients.map((ingredient) => ingredient.id),
+  );
+
   await prisma.menuItemIngredient.deleteMany({
     where: { menuItemId },
   });
@@ -86,7 +122,9 @@ async function replaceMenuItemIngredients({
     data: Array.from(ingredientIds).map((ingredientId, index) => ({
       menuItemId,
       ingredientId,
-      removable: removableIngredientIds.has(ingredientId),
+      removable:
+        allergenIngredientIds.has(ingredientId) &&
+        removableIngredientIds.has(ingredientId),
       swappable: swappableIngredientIds.has(ingredientId),
       sortOrder: index * 10,
     })),
@@ -135,14 +173,19 @@ export async function upsertMenuItemAction(formData: FormData) {
 
   const menuItemId = readPositiveInt(formData, "menuItemId");
   const itemName = readRequiredString(formData, "name");
+  const categoryLabel = readOptionalString(formData, "category");
+  const uploadedImage = readOptionalFile(formData, "imageFile");
+  const imageUrl =
+    uploadedImage ? await uploadMenuImageToR2(uploadedImage) : readOptionalString(formData, "imageUrl");
   const ingredientIds = readIdSet(formData, "ingredientIds");
   const removableIngredientIds = readIdSet(formData, "removableIngredientIds");
   const swappableIngredientIds = readIdSet(formData, "swappableIngredientIds");
   const data = {
     priceCents: readPriceCents(formData),
-    categoryKey: readOptionalString(formData, "categoryKey"),
+    categoryKey: toCategoryKey(categoryLabel),
     sortOrder: readPositiveInt(formData, "sortOrder"),
-    imageUrl: readOptionalString(formData, "imageUrl"),
+    imageUrl,
+    spicy: readBoolean(formData, "spicy"),
     active: readBoolean(formData, "active"),
   };
 
@@ -165,7 +208,7 @@ export async function upsertMenuItemAction(formData: FormData) {
       name: itemName,
       description: readOptionalString(formData, "description"),
       ingredients: readOptionalString(formData, "ingredients"),
-      category: readOptionalString(formData, "category"),
+      category: categoryLabel,
     },
     create: {
       menuItemId: menuItem.id,
@@ -173,7 +216,7 @@ export async function upsertMenuItemAction(formData: FormData) {
       name: itemName,
       description: readOptionalString(formData, "description"),
       ingredients: readOptionalString(formData, "ingredients"),
-      category: readOptionalString(formData, "category"),
+      category: categoryLabel,
     },
   });
 
@@ -192,7 +235,9 @@ export async function upsertMenuItemAction(formData: FormData) {
     metadata: {
       name: itemName,
       active: data.active,
+      spicy: data.spicy,
       priceCents: data.priceCents,
+      imageUploaded: Boolean(uploadedImage),
       ingredientIds: Array.from(ingredientIds),
     },
   });
