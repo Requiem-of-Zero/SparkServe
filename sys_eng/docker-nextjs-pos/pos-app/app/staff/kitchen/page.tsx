@@ -13,7 +13,19 @@ import { prisma } from "@/lib/prisma";
 
 type KitchenOrder = Prisma.OrderGetPayload<{
   include: {
-    items: true;
+    items: {
+      include: {
+        menuItem: {
+          include: {
+            ingredients: {
+              include: {
+                ingredient: true;
+              };
+            };
+          };
+        };
+      };
+    };
     requestedByParticipant: true;
     tableSession: {
       include: {
@@ -30,6 +42,11 @@ type KitchenTakeoutSession = Prisma.TakeoutSessionGetPayload<{
         menuItem: {
           include: {
             translations: true;
+            ingredients: {
+              include: {
+                ingredient: true;
+              };
+            };
           };
         };
       };
@@ -58,6 +75,19 @@ function formatPrice(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
+function getRemovedIngredientNames({
+  ingredients,
+  removedIngredientIds,
+}: {
+  ingredients: { ingredientId: number; ingredient: { name: string } }[];
+  removedIngredientIds: number[];
+}) {
+  return ingredients
+    .filter((entry) => removedIngredientIds.includes(entry.ingredientId))
+    .map((entry) => entry.ingredient.name)
+    .join(", ");
+}
+
 export default async function KitchenPage() {
   await requireActiveEmployee();
 
@@ -70,7 +100,17 @@ export default async function KitchenPage() {
         status: OrderStatus.SENT_TO_KITCHEN,
       },
       include: {
-        items: true,
+        items: {
+          include: {
+            menuItem: {
+              include: {
+                ingredients: {
+                  include: { ingredient: true },
+                },
+              },
+            },
+          },
+        },
         tableSession: {
           include: {
             table: true,
@@ -94,6 +134,9 @@ export default async function KitchenPage() {
             menuItem: {
               include: {
                 translations: true,
+                ingredients: {
+                  include: { ingredient: true },
+                },
               },
             },
           },
@@ -238,6 +281,15 @@ function KitchenOrderCard({ order }: { order: KitchenOrder }) {
                   {item.category}
                 </p>
               ) : null}
+              {item.removedIngredientIds.length > 0 && item.menuItem ? (
+                <p className="mt-2 rounded border border-orange-500/30 bg-orange-950/30 px-2 py-1 text-sm text-orange-100">
+                  No{" "}
+                  {getRemovedIngredientNames({
+                    ingredients: item.menuItem.ingredients,
+                    removedIngredientIds: item.removedIngredientIds,
+                  })}
+                </p>
+              ) : null}
               {item.note ? (
                 <p className="mt-2 rounded border border-amber-700/40 bg-amber-950/40 px-2 py-1 text-sm text-amber-100">
                   Note: {item.note}
@@ -328,6 +380,20 @@ function KitchenTakeoutCard({
               <p className="mt-1 text-xs uppercase tracking-wide text-zinc-500">
                 {getTakeoutItemCategory(item)}
               </p>
+              {item.removedIngredientIds.length > 0 ? (
+                <p className="mt-2 rounded border border-orange-500/30 bg-orange-950/30 px-2 py-1 text-sm text-orange-100">
+                  No{" "}
+                  {getRemovedIngredientNames({
+                    ingredients: item.menuItem.ingredients,
+                    removedIngredientIds: item.removedIngredientIds,
+                  })}
+                </p>
+              ) : null}
+              {item.note ? (
+                <p className="mt-2 rounded border border-amber-700/40 bg-amber-950/40 px-2 py-1 text-sm text-amber-100">
+                  Note: {item.note}
+                </p>
+              ) : null}
             </div>
           </li>
         ))}
