@@ -674,6 +674,7 @@ export async function submitCartToKitchenAction(
                 unitPriceCents: item.menuItem.priceCents,
                 lineTotalCents: item.quantity * item.menuItem.priceCents,
                 note: item.note,
+                removedIngredientIds: item.removedIngredientIds,
               };
             }),
           },
