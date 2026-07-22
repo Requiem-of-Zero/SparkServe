@@ -20,7 +20,11 @@ import { getStripeClient } from "@/lib/stripe";
 type TakeoutCheckoutItem = {
   menuItemId: number;
   quantity: number;
+  note: string | null;
+  removedIngredientIds: number[];
 };
+
+const allowedSpiceNotes = new Set(["Spice: Mild", "Spice: Medium", "Spice: Hot"]);
 
 function toStripeCurrency(value: string | null | undefined) {
   return (value || "usd").toLowerCase();
@@ -54,6 +58,10 @@ function parseTakeoutItems(body: unknown): TakeoutCheckoutItem[] {
 
     const menuItemId = Number((item as { menuItemId?: unknown }).menuItemId);
     const quantity = Number((item as { quantity?: unknown }).quantity);
+    const rawNote = (item as { note?: unknown }).note;
+    const rawRemovedIngredientIds = (item as {
+      removedIngredientIds?: unknown;
+    }).removedIngredientIds;
 
     if (!Number.isInteger(menuItemId) || menuItemId < 1) {
       throw new Error("Invalid menu item.");
@@ -63,7 +71,23 @@ function parseTakeoutItems(body: unknown): TakeoutCheckoutItem[] {
       throw new Error("Quantity must be between 1 and 20.");
     }
 
-    return { menuItemId, quantity };
+    return {
+      menuItemId,
+      quantity,
+      note:
+        typeof rawNote === "string" && rawNote.trim()
+          ? rawNote.trim().slice(0, 160)
+          : null,
+      removedIngredientIds: Array.isArray(rawRemovedIngredientIds)
+        ? Array.from(
+            new Set(
+              rawRemovedIngredientIds
+                .map((id) => Number(id))
+                .filter((id) => Number.isInteger(id) && id > 0),
+            ),
+          ).slice(0, 20)
+        : [],
+    };
   });
 }
 
@@ -91,33 +115,69 @@ async function createUniqueTakeoutToken() {
 export async function POST(request: NextRequest) {
   try {
     const items = parseTakeoutItems(await request.json());
-    const itemQuantityByMenuId = new Map<number, number>();
-
-    for (const item of items) {
-      itemQuantityByMenuId.set(
-        item.menuItemId,
-        (itemQuantityByMenuId.get(item.menuItemId) ?? 0) + item.quantity,
-      );
-    }
+    const menuItemIds = Array.from(new Set(items.map((item) => item.menuItemId)));
 
     const menuItems = await prisma.menuItem.findMany({
       where: {
-        id: { in: Array.from(itemQuantityByMenuId.keys()) },
+        id: { in: menuItemIds },
         active: true,
       },
       include: {
         translations: {
           where: { locale: "en" },
         },
+        ingredients: {
+          include: { ingredient: true },
+        },
       },
     });
+    const menuItemById = new Map(menuItems.map((item) => [item.id, item]));
 
-    if (menuItems.length !== itemQuantityByMenuId.size) {
+    if (menuItems.length !== menuItemIds.length) {
       return NextResponse.json(
         { message: "One or more menu items are no longer available." },
         { status: 400 },
       );
     }
+
+    const checkoutLines = items.map((item) => {
+      const menuItem = menuItemById.get(item.menuItemId);
+
+      if (!menuItem) {
+        throw new Error("One or more menu items are no longer available.");
+      }
+
+      const removedIngredientNames = menuItem.ingredients
+        .filter(
+          (entry) =>
+            entry.removable &&
+            entry.ingredient.commonAllergen &&
+            item.removedIngredientIds.includes(entry.ingredientId),
+        )
+        .map((entry) => entry.ingredient.name);
+      const removedIngredientIds = menuItem.ingredients
+        .filter(
+          (entry) =>
+            entry.removable &&
+            entry.ingredient.commonAllergen &&
+            item.removedIngredientIds.includes(entry.ingredientId),
+        )
+        .map((entry) => entry.ingredientId);
+
+      return {
+        ...item,
+        note:
+          menuItem.spicy && item.note && allowedSpiceNotes.has(item.note)
+            ? item.note
+            : null,
+        menuItem,
+        removedIngredientIds,
+        removedIngredientNames:
+          removedIngredientNames.length > 0
+            ? removedIngredientNames.join(", ")
+            : null,
+      };
+    });
 
     const restaurantSettings = await prisma.restaurantSettings.findUnique({
       where: { id: 1 },
@@ -126,9 +186,9 @@ export async function POST(request: NextRequest) {
     const currency = toStripeCurrency(restaurantSettings?.currency);
     const taxRate = Number(restaurantSettings?.taxRate ?? 0);
     const totals = calculateOrderTotals({
-      lines: menuItems.map((item) => ({
-        quantity: itemQuantityByMenuId.get(item.id) ?? 1,
-        unitPriceCents: item.priceCents,
+      lines: checkoutLines.map((line) => ({
+        quantity: line.quantity,
+        unitPriceCents: line.menuItem.priceCents,
       })),
       taxRate,
     });
@@ -146,7 +206,7 @@ export async function POST(request: NextRequest) {
         description: "Ablaze takeout order",
         metadata: {
           checkoutType: "takeout",
-          menuItemIds: menuItems.map((item) => item.id).join(","),
+          menuItemIds: menuItemIds.join(","),
         },
       };
     const submittedAt = new Date();
@@ -157,9 +217,11 @@ export async function POST(request: NextRequest) {
         submittedAt,
         items: {
           createMany: {
-            data: menuItems.map((item) => ({
-              menuItemId: item.id,
-              quantity: itemQuantityByMenuId.get(item.id) ?? 1,
+            data: checkoutLines.map((line) => ({
+              menuItemId: line.menuItemId,
+              quantity: line.quantity,
+              note: line.note,
+              removedIngredientIds: line.removedIngredientIds,
             })),
           },
         },
@@ -182,18 +244,27 @@ export async function POST(request: NextRequest) {
     }
 
     const stripeLineItems: Stripe.Checkout.SessionCreateParams.LineItem[] =
-      menuItems.map((item) => {
-        const translation = item.translations[0];
+      checkoutLines.map((line) => {
+        const translation = line.menuItem.translations[0];
+        const description = [
+          line.removedIngredientNames
+            ? `No ${line.removedIngredientNames}`
+            : null,
+          line.note ? `Note: ${line.note}` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ");
 
         return {
-          quantity: itemQuantityByMenuId.get(item.id) ?? 1,
+          quantity: line.quantity,
           price_data: {
             currency,
-            unit_amount: item.priceCents,
+            unit_amount: line.menuItem.priceCents,
             product_data: {
-              name: translation?.name ?? `Menu item #${item.id}`,
+              name: translation?.name ?? `Menu item #${line.menuItemId}`,
+              description: description || undefined,
               metadata: {
-                menuItemId: String(item.id),
+                menuItemId: String(line.menuItemId),
                 checkoutType: "takeout",
               },
             },
