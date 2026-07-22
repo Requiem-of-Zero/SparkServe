@@ -1,13 +1,10 @@
 import Link from "next/link";
 
+import { MenuPreviewGrid } from "@/app/components/menu-preview-grid";
 import { RestaurantBrandLink } from "@/app/components/restaurant-brand-link";
 import { SiteFooter } from "@/app/components/site-footer";
 import { getCurrentSession } from "@/lib/employee-auth";
 import { prisma } from "@/lib/prisma";
-
-function formatPrice(priceCents: number) {
-  return `$${(priceCents / 100).toFixed(2)}`;
-}
 
 // Customer storefront for the restaurant using Ablaze. Takeout has its own
 // private cart flow, while dine-in ordering still uses table-session QR links.
@@ -24,7 +21,32 @@ export default async function Home() {
       translations: {
         where: { locale: restaurant?.defaultLocale ?? "en" },
       },
+      ingredients: {
+        orderBy: [{ sortOrder: "asc" }, { ingredient: { name: "asc" } }],
+        include: { ingredient: true },
+      },
     },
+  });
+  const previewMenuItems = menuItems.map((item) => {
+    const translation = item.translations[0];
+
+    return {
+      id: item.id,
+      priceCents: item.priceCents,
+      categoryKey: item.categoryKey,
+      imageUrl: item.imageUrl,
+      spicy: item.spicy,
+      name: translation?.name ?? `Menu item #${item.id}`,
+      description: translation?.description ?? null,
+      category: translation?.category ?? item.categoryKey ?? "Menu",
+      ingredients: item.ingredients.map((entry) => ({
+        id: entry.ingredient.id,
+        name: entry.ingredient.name,
+        commonAllergen: entry.ingredient.commonAllergen,
+        allergenNote: entry.ingredient.allergenNote,
+        removable: entry.removable,
+      })),
+    };
   });
   const [customerProfile, employeeProfile] = session?.user
     ? await Promise.all([
@@ -185,43 +207,8 @@ export default async function Home() {
             </Link>
           </div>
 
-          <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {menuItems.map((item) => {
-              const translation = item.translations[0];
-
-              return (
-                <article
-                  key={item.id}
-                  className="overflow-hidden rounded-lg border border-orange-950/60 bg-[#1a0f0b]"
-                >
-                  {item.imageUrl ? (
-                    <img
-                      src={item.imageUrl}
-                      alt=""
-                      className="h-44 w-full object-cover"
-                    />
-                  ) : null}
-                  <div className="p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <h3 className="font-semibold">
-                        {translation?.name ?? `Menu item #${item.id}`}
-                      </h3>
-                      <span className="shrink-0 font-semibold text-[#ffd166]">
-                        {formatPrice(item.priceCents)}
-                      </span>
-                    </div>
-                    {translation?.description ? (
-                      <p className="mt-2 text-sm text-zinc-400">
-                        {translation.description}
-                      </p>
-                    ) : null}
-                    <p className="mt-3 text-xs uppercase tracking-wide text-zinc-500">
-                      {translation?.category ?? item.categoryKey ?? "Menu"}
-                    </p>
-                  </div>
-                </article>
-              );
-            })}
+          <div className="mt-7">
+            <MenuPreviewGrid menuItems={previewMenuItems} />
           </div>
 
           <Link
