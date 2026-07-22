@@ -39,12 +39,13 @@ model OrderItem {
   menuItemId Int?
 
   // Snapshot fields so old receipts stay accurate if menu changes later.
-  name           String
-  category       String?
-  quantity       Int
-  unitPriceCents Int
-  lineTotalCents Int
-  note           String?
+  name                 String
+  category             String?
+  quantity             Int
+  unitPriceCents       Int
+  lineTotalCents       Int
+  note                 String?
+  removedIngredientIds Int[]   @default([])
 
   createdAt DateTime @default(now())
 

@@ -87,13 +87,14 @@ model TableSessionOwnershipTransfer {
 
 /// Shared cart row before items are submitted as a kitchen/payment order.
 model TableSessionItem {
-  id             Int      @id @default(autoincrement())
-  tableSessionId Int
-  menuItemId     Int
-  quantity       Int      @default(1)
-  note           String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                   Int      @id @default(autoincrement())
+  tableSessionId       Int
+  menuItemId           Int
+  quantity             Int      @default(1)
+  note                 String?
+  removedIngredientIds Int[]    @default([])
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   tableSession TableSession @relation(fields: [tableSessionId], references: [id], onDelete: Cascade)
   menuItem     MenuItem     @relation(fields: [menuItemId], references: [id])
