@@ -206,6 +206,8 @@ type AddCartItemPayload = {
   token: string;
   menuItemId: number;
   quantity?: number;
+  note?: string;
+  removedIngredientIds?: number[];
   guestName?: string;
 };
 
@@ -214,6 +216,77 @@ type AdjustCartItemPayload = {
   itemId: number;
   guestName?: string;
 };
+
+function getSafeNote(value: unknown) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const note = value.trim();
+
+  return note ? note.slice(0, 160) : null;
+}
+
+const allowedSpiceNotes = new Set(["Spice: Mild", "Spice: Medium", "Spice: Hot"]);
+
+async function resolveStructuredKitchenNote({
+  menuItemId,
+  note,
+}: {
+  menuItemId: number;
+  note: string | null;
+}) {
+  if (!note || !allowedSpiceNotes.has(note)) {
+    return null;
+  }
+
+  const menuItem = await prisma.menuItem.findUnique({
+    where: { id: menuItemId },
+    select: { spicy: true },
+  });
+
+  return menuItem?.spicy ? note : null;
+}
+
+function getSafeIngredientIds(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      value
+        .map((id) => Number(id))
+        .filter((id) => Number.isInteger(id) && id > 0),
+    ),
+  ).slice(0, 20);
+}
+
+async function resolveRemovableIngredientIds({
+  menuItemId,
+  removedIngredientIds,
+}: {
+  menuItemId: number;
+  removedIngredientIds: number[];
+}) {
+  if (removedIngredientIds.length === 0) {
+    return [];
+  }
+
+  const removableIngredients = await prisma.menuItemIngredient.findMany({
+    where: {
+      menuItemId,
+      ingredientId: { in: removedIngredientIds },
+      removable: true,
+      ingredient: {
+        commonAllergen: true,
+      },
+    },
+    orderBy: [{ sortOrder: "asc" }, { ingredient: { name: "asc" } }],
+  });
+
+  return removableIngredients.map((entry) => entry.ingredientId);
+}
 
 io.on("connection", (socket) => {
   console.log("socket connected", socket.id);
@@ -365,7 +438,14 @@ io.on("connection", (socket) => {
   socket.on(
     "cart:add-item",
     async (
-      { token, menuItemId, quantity, guestName }: AddCartItemPayload,
+      {
+        token,
+        menuItemId,
+        quantity,
+        note: rawNote,
+        removedIngredientIds: rawRemovedIngredientIds,
+        guestName,
+      }: AddCartItemPayload,
       ack?: (response: CartAckResponse) => void,
     ) => {
       try {
@@ -386,6 +466,14 @@ io.on("connection", (socket) => {
           return;
         }
 
+        const note = await resolveStructuredKitchenNote({
+          menuItemId,
+          note: getSafeNote(rawNote),
+        });
+        const removedIngredientIds = await resolveRemovableIngredientIds({
+          menuItemId,
+          removedIngredientIds: getSafeIngredientIds(rawRemovedIngredientIds),
+        });
         const orderableSession = await getOrderableTableSession(token);
 
         if (!orderableSession.ok) {
@@ -402,7 +490,8 @@ io.on("connection", (socket) => {
           where: {
             tableSessionId: session.id,
             menuItemId,
-            note: null,
+            note,
+            removedIngredientIds: { equals: removedIngredientIds },
           },
         });
 
@@ -427,6 +516,8 @@ io.on("connection", (socket) => {
                 tableSessionId: session.id,
                 menuItemId,
                 quantity: safeQuantity,
+                note,
+                removedIngredientIds,
               },
               include: {
                 menuItem: {
