@@ -36,6 +36,13 @@ resource "local_sensitive_file" "restaurant_env" {
       connected_account_id = ""
       webhook_secret       = ""
     })
+    r2 = lookup(var.restaurant_r2_storage, each.key, {
+      account_id        = ""
+      access_key_id     = ""
+      secret_access_key = ""
+      bucket            = ""
+      public_base_url   = ""
+    })
   })
 }
 

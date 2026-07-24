@@ -59,6 +59,20 @@ variable "restaurant_stripe" {
   default   = {}
 }
 
+# Per-restaurant Cloudflare R2 settings for owner-uploaded menu photos.
+variable "restaurant_r2_storage" {
+  description = "Cloudflare R2 image storage settings keyed by restaurant slug."
+  type = map(object({
+    account_id        = string
+    access_key_id     = string
+    secret_access_key = string
+    bucket            = string
+    public_base_url   = string
+  }))
+  sensitive = true
+  default   = {}
+}
+
 # Private key Terraform uses from the HQ machine when SSHing into restaurant hosts.
 variable "ssh_private_key_path" {
   description = "Private SSH key used by Terraform on the HQ machine to connect to restaurant hosts."
