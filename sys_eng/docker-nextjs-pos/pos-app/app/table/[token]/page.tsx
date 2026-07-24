@@ -41,6 +41,19 @@ function CartIcon() {
   );
 }
 
+function getRemovedIngredientNames({
+  ingredients,
+  removedIngredientIds,
+}: {
+  ingredients: { ingredientId: number; ingredient: { name: string } }[];
+  removedIngredientIds: number[];
+}) {
+  return ingredients
+    .filter((entry) => removedIngredientIds.includes(entry.ingredientId))
+    .map((entry) => entry.ingredient.name)
+    .join(", ");
+}
+
 export default async function TableSessionPage({
   params,
 }: TableSessionPageProps) {
@@ -111,6 +124,10 @@ export default async function TableSessionPage({
           locale: "en",
         },
       },
+      ingredients: {
+        orderBy: [{ sortOrder: "asc" }, { ingredient: { name: "asc" } }],
+        include: { ingredient: true },
+      },
     },
   });
   const unpaidOrders = session.orders.filter(
@@ -176,6 +193,10 @@ export default async function TableSessionPage({
                   );
                   const name =
                     translation?.name ?? `Menu item #${item.menuItemId}`;
+                  const removedIngredients = getRemovedIngredientNames({
+                    ingredients: item.menuItem.ingredients,
+                    removedIngredientIds: item.removedIngredientIds,
+                  });
 
                   return (
                     <li
@@ -184,6 +205,16 @@ export default async function TableSessionPage({
                     >
                       <span>
                         {name}
+                        {removedIngredients ? (
+                          <span className="mt-1 block text-xs text-amber-200">
+                            No {removedIngredients}
+                          </span>
+                        ) : null}
+                        {item.note ? (
+                          <span className="mt-1 block text-xs text-zinc-400">
+                            Note: {item.note}
+                          </span>
+                        ) : null}
                       </span>
                       <TableSessionItemQuantityControls
                         token={token}
@@ -223,8 +254,25 @@ export default async function TableSessionPage({
                     </div>
                     <ul className="mt-2 space-y-1 text-sm text-zinc-400">
                       {order.items.map((item) => (
-                        <li key={item.id}>
-                          {item.quantity}x {item.name}
+                        <li key={item.id} className="space-y-1">
+                          <div>
+                            {item.quantity}x {item.name}
+                          </div>
+                          {item.removedIngredientIds.length > 0 &&
+                          item.menuItem ? (
+                            <div className="text-xs text-amber-200">
+                              No{" "}
+                              {getRemovedIngredientNames({
+                                ingredients: item.menuItem.ingredients,
+                                removedIngredientIds: item.removedIngredientIds,
+                              })}
+                            </div>
+                          ) : null}
+                          {item.note ? (
+                            <div className="text-xs text-zinc-500">
+                              Note: {item.note}
+                            </div>
+                          ) : null}
                         </li>
                       ))}
                     </ul>
@@ -245,9 +293,17 @@ export default async function TableSessionPage({
               priceCents: item.priceCents,
               categoryKey: item.categoryKey,
               imageUrl: item.imageUrl,
+              spicy: item.spicy,
               name: translation?.name ?? `Menu item #${item.id}`,
               description: translation?.description ?? null,
               category: translation?.category ?? item.categoryKey ?? "Menu",
+              ingredients: item.ingredients.map((entry) => ({
+                id: entry.ingredient.id,
+                name: entry.ingredient.name,
+                commonAllergen: entry.ingredient.commonAllergen,
+                allergenNote: entry.ingredient.allergenNote,
+                removable: entry.removable,
+              })),
             };
           })}
         />
