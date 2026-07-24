@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { AblazeMark } from "./ablaze-mark";
+import { SparkServeMark } from "./sparkserve-mark";
 
 type SiteFooterProps = {
   restaurantName?: string | null;
@@ -63,8 +63,8 @@ export function SiteFooter({ restaurantName }: SiteFooterProps) {
               href="/"
               className="mt-4 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#ffd166]/80"
             >
-              <AblazeMark className="h-6 w-6" />
-              Powered by Ablaze
+              <SparkServeMark className="h-6 w-6" />
+              Powered by SparkServe
             </Link>
           </div>
 
@@ -92,7 +92,7 @@ export function SiteFooter({ restaurantName }: SiteFooterProps) {
           <p>
             © {year} {displayName}. All rights reserved.
           </p>
-          <p className="text-zinc-600">Ablaze restaurant ordering platform.</p>
+          <p className="text-zinc-600">SparkServe restaurant ordering platform.</p>
         </div>
       </div>
     </footer>

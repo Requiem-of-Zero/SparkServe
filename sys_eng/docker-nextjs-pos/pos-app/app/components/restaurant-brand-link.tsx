@@ -8,10 +8,10 @@ type RestaurantBrandLinkProps = {
   textClassName?: string;
 };
 
-const defaultRestaurantLogoUrl = "/brand/ablaze-logo-transparent.png";
+const defaultRestaurantLogoUrl = "/brand/sparkserve-logo-transparent.png";
 
 // Public storefront brand. This uses the restaurant's configured name/logo;
-// Ablaze stays in the footer as the platform provider.
+// SparkServe stays in the footer as the platform provider.
 export function RestaurantBrandLink({
   logoUrl,
   name,
@@ -35,9 +35,9 @@ export function RestaurantBrandLink({
         />
         {animated ? (
           <>
-            <span className="ablaze-sparkle ablaze-sparkle-left" />
-            <span className="ablaze-sparkle ablaze-sparkle-right" />
-            <span className="ablaze-sparkle ablaze-sparkle-low" />
+            <span className="sparkserve-sparkle sparkserve-sparkle-left" />
+            <span className="sparkserve-sparkle sparkserve-sparkle-right" />
+            <span className="sparkserve-sparkle sparkserve-sparkle-low" />
           </>
         ) : null}
       </span>

@@ -131,7 +131,7 @@ export async function POST(request: NextRequest, { params }: StripeCheckoutRoute
     });
     const paymentIntentData: Stripe.Checkout.SessionCreateParams.PaymentIntentData =
       {
-        description: `Ablaze dine-in table checkout #${checkout.id}`,
+        description: `SparkServe dine-in table checkout #${checkout.id}`,
         metadata: {
           checkoutType: "dine_in",
           checkoutId: String(checkout.id),

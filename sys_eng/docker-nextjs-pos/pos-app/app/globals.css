@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  --ablaze-bg: #100b0b;
-  --ablaze-surface: #1a0f0b;
-  --ablaze-primary: #ff6a1a;
-  --ablaze-accent: #ffd166;
-  --ablaze-ruby: #b91c1c;
-  --ablaze-text: #fff7ed;
-  --background: var(--ablaze-bg);
-  --foreground: var(--ablaze-text);
+  --sparkserve-bg: #100b0b;
+  --sparkserve-surface: #1a0f0b;
+  --sparkserve-primary: #ff6a1a;
+  --sparkserve-accent: #ffd166;
+  --sparkserve-ruby: #b91c1c;
+  --sparkserve-text: #fff7ed;
+  --background: var(--sparkserve-bg);
+  --foreground: var(--sparkserve-text);
 }
 
 @theme inline {
@@ -20,8 +20,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: var(--ablaze-bg);
-    --foreground: var(--ablaze-text);
+    --background: var(--sparkserve-bg);
+    --foreground: var(--sparkserve-text);
   }
 }
 
@@ -32,8 +32,8 @@ body {
 }
 
 :root[data-theme="dark"] {
-  --background: var(--ablaze-bg);
-  --foreground: var(--ablaze-text);
+  --background: var(--sparkserve-bg);
+  --foreground: var(--sparkserve-text);
 }
 
 :root[data-theme="light"] {
@@ -41,7 +41,7 @@ body {
   --foreground: #24110b;
 }
 
-@keyframes ablaze-sparkle-rise {
+@keyframes sparkserve-sparkle-rise {
   0% {
     opacity: 0;
     transform: translateY(7px) scale(0.65);
@@ -57,7 +57,7 @@ body {
   }
 }
 
-@keyframes ablaze-mark-float {
+@keyframes sparkserve-mark-float {
   0%,
   100% {
     transform: translateY(0);
@@ -68,7 +68,7 @@ body {
   }
 }
 
-@keyframes ablaze-glow-pulse {
+@keyframes sparkserve-glow-pulse {
   0%,
   100% {
     opacity: 0.16;
@@ -81,13 +81,13 @@ body {
   }
 }
 
-/* The mark uses the real Ablaze logo image and keeps motion to heat-glow + sparks. */
-.ablaze-mark {
-  animation: ablaze-mark-float 4.8s ease-in-out infinite;
+/* The mark uses the real SparkServe logo image and keeps motion to heat-glow + sparks. */
+.sparkserve-mark {
+  animation: sparkserve-mark-float 4.8s ease-in-out infinite;
 }
 
 .restaurant-brand-mark {
-  animation: ablaze-mark-float 4.8s ease-in-out infinite;
+  animation: sparkserve-mark-float 4.8s ease-in-out infinite;
 }
 
 .restaurant-brand-mark::after {
@@ -104,14 +104,14 @@ body {
   filter: blur(8px);
   pointer-events: none;
   transform: translate(-50%, -50%);
-  animation: ablaze-glow-pulse 3.6s ease-in-out infinite;
+  animation: sparkserve-glow-pulse 3.6s ease-in-out infinite;
 }
 
 .restaurant-brand-image {
   filter: drop-shadow(0 0 8px rgb(255 106 26 / 0.45));
 }
 
-.ablaze-mark::before {
+.sparkserve-mark::before {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -124,16 +124,16 @@ body {
     radial-gradient(circle, rgb(255 106 26 / 0.42), transparent 68%);
   filter: blur(8px);
   pointer-events: none;
-  animation: ablaze-glow-pulse 3.6s ease-in-out infinite;
+  animation: sparkserve-glow-pulse 3.6s ease-in-out infinite;
 }
 
-.ablaze-mark-image {
+.sparkserve-mark-image {
   z-index: 1;
   object-fit: contain;
   filter: drop-shadow(0 0 8px rgb(255 106 26 / 0.45));
 }
 
-.ablaze-sparkle {
+.sparkserve-sparkle {
   position: absolute;
   z-index: 2;
   width: 2px;
@@ -144,32 +144,32 @@ body {
     3px 0 0 #ff8a1f;
   image-rendering: pixelated;
   opacity: 0;
-  animation: ablaze-sparkle-rise 2.7s linear infinite;
+  animation: sparkserve-sparkle-rise 2.7s linear infinite;
 }
 
-.ablaze-sparkle-left {
+.sparkserve-sparkle-left {
   left: -4px;
   top: 52%;
 }
 
-.ablaze-sparkle-right {
+.sparkserve-sparkle-right {
   right: -4px;
   top: 34%;
   animation-delay: 0.8s;
 }
 
-.ablaze-sparkle-low {
+.sparkserve-sparkle-low {
   left: 10%;
   top: 70%;
   animation-delay: 1.45s;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ablaze-mark,
-  .ablaze-mark::before,
+  .sparkserve-mark,
+  .sparkserve-mark::before,
   .restaurant-brand-mark,
   .restaurant-brand-mark::after,
-  .ablaze-sparkle {
+  .sparkserve-sparkle {
     animation: none;
   }
 }

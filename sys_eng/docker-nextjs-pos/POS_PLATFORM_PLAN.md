@@ -23,9 +23,9 @@ The same app code can be deployed to many restaurants, but each restaurant owns 
 
 ## Competitive Context
 
-Ablaze is being shaped as a lightweight, self-hostable restaurant ordering and POS platform for small restaurants that want modern QR ordering, takeout ordering, staff tools, and payments without adopting a large all-in-one vendor stack on day one.
+SparkServe is being shaped as a lightweight, self-hostable restaurant ordering and POS platform for small restaurants that want modern QR ordering, takeout ordering, staff tools, and payments without adopting a large all-in-one vendor stack on day one.
 
-Compared with a mature platform like Chowbus, Ablaze already has the beginning of the same core product pillars:
+Compared with a mature platform like Chowbus, SparkServe already has the beginning of the same core product pillars:
 
 - restaurant storefront and takeout entry point
 - QR/table session ordering
@@ -39,7 +39,7 @@ Compared with a mature platform like Chowbus, Ablaze already has the beginning o
 
 The gap is not the basic ordering idea anymore. The remaining gap is restaurant operations depth. Chowbus-like systems become valuable because staff can run the restaurant from them all day: kitchen display, order status, waitlist, table management, menu editing, reporting, refunds, hardware payments, and customer marketing.
 
-For a first restaurant sales pitch, Ablaze should aim to prove:
+For a first restaurant sales pitch, SparkServe should aim to prove:
 
 ```text
 customer orders -> kitchen sees it -> staff manages it -> customer pays -> owner can review sales

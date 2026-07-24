@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ablaze",
+  title: "SparkServe",
   description: "Restaurant ordering, table sessions, and loyalty rewards.",
   icons: {
     icon: "/icon.png",

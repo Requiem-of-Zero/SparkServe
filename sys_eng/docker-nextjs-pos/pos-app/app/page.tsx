@@ -6,7 +6,7 @@ import { SiteFooter } from "@/app/components/site-footer";
 import { getCurrentSession } from "@/lib/employee-auth";
 import { prisma } from "@/lib/prisma";
 
-// Customer storefront for the restaurant using Ablaze. Takeout has its own
+// Customer storefront for the restaurant using SparkServe. Takeout has its own
 // private cart flow, while dine-in ordering still uses table-session QR links.
 export default async function Home() {
   const session = await getCurrentSession();
