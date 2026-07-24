@@ -2,17 +2,8 @@
 
 import { useMemo, useState } from "react";
 
+import type { CustomerMenuItem } from "@/lib/menu-display";
 import { AddMenuItemButton } from "./add-menu-item-button";
-
-type TableMenuItem = {
-  id: number;
-  priceCents: number;
-  categoryKey: string | null;
-  imageUrl: string | null;
-  name: string;
-  description: string | null;
-  category: string;
-};
 
 function MenuIcon() {
   return (
@@ -40,7 +31,7 @@ export function TableMenuSection({
   menuItems,
 }: {
   token: string;
-  menuItems: TableMenuItem[];
+  menuItems: CustomerMenuItem[];
 }) {
   const categories = useMemo(() => {
     const categoryMap = new Map<string, string>();
@@ -127,6 +118,24 @@ export function TableMenuSection({
                   ) : null}
 
                   <p className="mt-2 text-xs text-zinc-500">{item.category}</p>
+                  {item.ingredients.some(
+                    (ingredient) => ingredient.commonAllergen,
+                  ) ? (
+                    <p className="mt-2 inline-flex rounded-full border border-amber-500/40 px-2 py-1 text-xs text-amber-200">
+                      Allergy info
+                    </p>
+                  ) : item.spicy ? (
+                    <p className="mt-2 inline-flex rounded-full border border-orange-500/40 px-2 py-1 text-xs text-orange-200">
+                      Spice options
+                    </p>
+                  ) : item.ingredients.some(
+                      (ingredient) =>
+                        ingredient.commonAllergen && ingredient.removable,
+                    ) ? (
+                    <p className="mt-2 inline-flex rounded-full border border-emerald-500/30 px-2 py-1 text-xs text-emerald-200">
+                      Customizable
+                    </p>
+                  ) : null}
                 </div>
 
                 <p className="shrink-0 text-sm font-semibold">
@@ -135,7 +144,7 @@ export function TableMenuSection({
               </div>
 
               <div className="mt-3 flex justify-end">
-                <AddMenuItemButton token={token} menuItemId={item.id} />
+                <AddMenuItemButton token={token} item={item} />
               </div>
             </div>
           </div>
