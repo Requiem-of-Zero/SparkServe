@@ -71,6 +71,9 @@ export async function getTableSessionByToken(publicToken: string) {
           menuItem: {
             include: {
               translations: true,
+              ingredients: {
+                include: { ingredient: true },
+              },
             },
           },
         },
@@ -84,6 +87,15 @@ export async function getTableSessionByToken(publicToken: string) {
         include: {
           items: {
             orderBy: { createdAt: "asc" },
+            include: {
+              menuItem: {
+                include: {
+                  ingredients: {
+                    include: { ingredient: true },
+                  },
+                },
+              },
+            },
           },
         },
       },
