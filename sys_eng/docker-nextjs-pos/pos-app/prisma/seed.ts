@@ -21,9 +21,9 @@ const prisma = new PrismaClient({
 
 const demoPassword = "abc12345";
 
-// Ablaze's fallback restaurant palette. Owners can override these later, but
-// fresh local/demo restaurants should immediately feel like the Ablaze brand.
-const ablazeDefaultTheme = {
+// SparkServe's fallback restaurant palette. Owners can override these later,
+// but fresh local/demo restaurants should immediately feel on-brand.
+const sparkserveDefaultTheme = {
   logoUrl: null,
   primaryColor: "#ff6a1a",
   accentColor: "#ffd166",
@@ -385,6 +385,8 @@ async function resetDemoOperationalData() {
   await prisma.tableSessionItem.deleteMany();
   await prisma.tableSessionParticipant.deleteMany();
   await prisma.tableSession.deleteMany();
+  await prisma.takeoutSessionItem.deleteMany();
+  await prisma.takeoutSession.deleteMany();
   await prisma.menuItemIngredient.deleteMany();
   await prisma.menuItemTranslation.deleteMany();
   await prisma.menuItem.deleteMany();
@@ -510,7 +512,7 @@ async function main() {
       publicUrl: "http://localhost:8080",
       receiptFooter: "Thank you for visiting Big Fish House.",
       supportedLocales: ["en", "es"],
-      ...ablazeDefaultTheme,
+      ...sparkserveDefaultTheme,
     },
     create: {
       id: 1,
@@ -518,7 +520,7 @@ async function main() {
       publicUrl: "http://localhost:8080",
       receiptFooter: "Thank you for visiting Big Fish House.",
       supportedLocales: ["en", "es"],
-      ...ablazeDefaultTheme,
+      ...sparkserveDefaultTheme,
     },
   });
 
