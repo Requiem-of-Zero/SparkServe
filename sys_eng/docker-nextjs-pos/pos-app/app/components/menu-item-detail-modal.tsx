@@ -98,15 +98,29 @@ export function MenuItemDetailModal({
 
   return (
     <>
-      <button type="button" onClick={() => setIsOpen(true)} className="text-left">
+      <button
+        type="button"
+        onClick={() => setIsOpen(true)}
+        className="block w-full text-left"
+      >
         {children}
       </button>
 
       {isOpen ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 px-4 py-4 backdrop-blur-sm sm:items-center">
-          <div className="max-h-[92vh] w-full max-w-lg animate-[modal-pop_180ms_ease-out] overflow-y-auto rounded-xl border border-orange-200/20 bg-[#160d0a] text-[#fff7ed] shadow-2xl shadow-black/40">
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 px-4 py-4 backdrop-blur-sm sm:items-center"
+          role="presentation"
+          onMouseDown={() => setIsOpen(false)}
+        >
+          <div
+            className="max-h-[92vh] w-full max-w-lg animate-[modal-pop_180ms_ease-out] overflow-y-auto rounded-xl border border-orange-200/20 bg-[#160d0a] text-[#fff7ed] shadow-2xl shadow-black/40"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={`menu-item-title-${item.id}`}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
             <div className="relative">
-              <div className="h-56 bg-[#100b0b]">
+              <div className="aspect-[4/3] w-full overflow-hidden bg-[#100b0b] sm:aspect-[16/9]">
                 {item.imageUrl ? (
                   <img
                     src={item.imageUrl}
@@ -136,7 +150,12 @@ export function MenuItemDetailModal({
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#ffd166]">
                       {item.category}
                     </p>
-                    <h2 className="mt-2 text-2xl font-bold">{item.name}</h2>
+                    <h2
+                      id={`menu-item-title-${item.id}`}
+                      className="mt-2 text-2xl font-bold"
+                    >
+                      {item.name}
+                    </h2>
                   </div>
                   <p className="shrink-0 font-semibold text-[#ffd166]">
                     {formatMenuPrice(item.priceCents)}
@@ -172,29 +191,48 @@ export function MenuItemDetailModal({
               {item.ingredients.length > 0 ? (
                 <div>
                   <h3 className="font-semibold">Ingredients</h3>
-                  <div className="mt-3 space-y-2">
+                  <div className="mt-3 flex flex-wrap gap-2">
                     {item.ingredients.map((ingredient) => (
-                      <label
+                      <span
                         key={ingredient.id}
-                        className={`flex items-start justify-between gap-3 rounded-md border p-3 ${
+                        className={`rounded-full border px-3 py-1 text-sm ${
                           ingredient.commonAllergen
-                            ? "border-amber-500/40 bg-amber-950/20"
-                            : "border-orange-200/10 bg-[#100b0b]"
+                            ? "border-amber-400/40 bg-amber-950/25 text-amber-100"
+                            : "border-orange-200/15 bg-[#100b0b] text-zinc-300"
                         }`}
+                        title={ingredient.allergenNote ?? undefined}
                       >
-                        <span>
-                          <span className="font-medium">{ingredient.name}</span>
-                          {ingredient.allergenNote ? (
-                            <span className="mt-1 block text-xs text-zinc-400">
-                              {ingredient.allergenNote}
+                        {ingredient.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {onAdd &&
+              allergyIngredients.some((ingredient) => ingredient.removable) ? (
+                <div>
+                  <h3 className="font-semibold">Allergy removals</h3>
+                  <div className="mt-3 space-y-2">
+                    {allergyIngredients
+                      .filter((ingredient) => ingredient.removable)
+                      .map((ingredient) => (
+                        <label
+                          key={ingredient.id}
+                          className="flex items-start justify-between gap-3 rounded-md border border-amber-500/40 bg-amber-950/20 p-3"
+                        >
+                          <span>
+                            <span className="font-medium">
+                              {ingredient.name}
                             </span>
-                          ) : null}
-                        </span>
-                        {onAdd &&
-                        ingredient.commonAllergen &&
-                        ingredient.removable ? (
+                            {ingredient.allergenNote ? (
+                              <span className="mt-1 block text-xs text-zinc-400">
+                                {ingredient.allergenNote}
+                              </span>
+                            ) : null}
+                          </span>
                           <span className="flex shrink-0 items-center gap-2 text-xs text-zinc-300">
-                            Remove for allergy
+                            Remove
                             <input
                               type="checkbox"
                               checked={removedIngredientIds.includes(
@@ -206,9 +244,8 @@ export function MenuItemDetailModal({
                               className="h-4 w-4 accent-[#ff6a1a]"
                             />
                           </span>
-                        ) : null}
-                      </label>
-                    ))}
+                        </label>
+                      ))}
                   </div>
                 </div>
               ) : null}
