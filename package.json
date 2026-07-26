@@ -2,8 +2,8 @@
   "name": "sparkserve-platform",
   "private": true,
   "scripts": {
-    "build": "yarn --cwd pos-app prisma generate",
-    "start": "yarn --cwd pos-app start:socket"
+    "build": "cd pos-app && npm install --include=dev && npm exec prisma generate",
+    "start": "cd pos-app && npm run start:socket"
   },
   "engines": {
     "node": ">=20"
