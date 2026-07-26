@@ -12,9 +12,14 @@ import {
 } from "../lib/table-participant-identity";
 import { canTableAcceptOrders } from "../lib/table-owner-verification";
 
-const io = new Server(3001, {
+const port = Number(process.env.PORT ?? 3001);
+const allowedOrigins = process.env.REALTIME_ALLOWED_ORIGINS
+  ? process.env.REALTIME_ALLOWED_ORIGINS.split(",").map((origin) => origin.trim())
+  : ["http://localhost:3000", "http://192.168.1.58:3000"];
+
+const io = new Server(port, {
   cors: {
-    origin: ["http://localhost:3000", "http://192.168.1.58:3000"],
+    origin: allowedOrigins,
     credentials: true,
   },
 });
@@ -882,4 +887,4 @@ io.on("connection", (socket) => {
   });
 });
 
-console.log("Realtime server listening on http://192.168.1.58:3001");
+console.log(`Realtime server listening on port ${port}`);

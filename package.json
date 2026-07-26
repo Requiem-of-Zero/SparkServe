@@ -1,0 +1,11 @@
+{
+  "name": "sparkserve-platform",
+  "private": true,
+  "scripts": {
+    "build": "yarn --cwd pos-app prisma generate",
+    "start": "yarn --cwd pos-app start:socket"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
