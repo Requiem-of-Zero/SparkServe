@@ -1,7 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "nextjs",
-  "installCommand": "yarn --cwd pos-app install --frozen-lockfile",
-  "buildCommand": "yarn --cwd pos-app prisma generate && yarn --cwd pos-app build",
-  "outputDirectory": "pos-app/.next"
+  "framework": "nextjs"
 }
