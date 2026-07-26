@@ -10,6 +10,7 @@
     "test": "vitest run",
     "db:seed": "tsx prisma/seed.ts",
     "dev:socket": "tsx server/table-sessions-server.ts",
+    "start:socket": "tsx server/table-sessions-server.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -20,6 +21,7 @@
     "@prisma/client": "^7.8.0",
     "@stripe/react-stripe-js": "^6.7.0",
     "@stripe/stripe-js": "^9.9.0",
+    "@tailwindcss/postcss": "^4",
     "better-auth": "^1.6.23",
     "next": "16.2.9",
     "pg": "^8.21.0",
@@ -28,7 +30,7 @@
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
     "stripe": "^22.3.0",
-    "@tailwindcss/postcss": "^4"
+    "tailwindcss": "^4"
   },
   "devDependencies": {
     "@types/node": "^20",
@@ -38,7 +40,6 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "prisma": "^7.8.0",
-    "tailwindcss": "^4",
     "tsx": "^4.22.4",
     "typescript": "^5",
     "vitest": "^3.2.4"
