@@ -286,7 +286,6 @@ function MenuItemForm({
   return (
     <form
       action={upsertMenuItemAction}
-      encType="multipart/form-data"
       className="mt-5 space-y-5"
     >
       {item ? <input name="menuItemId" type="hidden" value={item.id} /> : null}

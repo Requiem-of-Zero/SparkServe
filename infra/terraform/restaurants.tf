@@ -109,7 +109,7 @@ resource "null_resource" "push_restaurant_compose" {
 
   # Upload the POS app source so the restaurant host can build the app image.
   provisioner "file" {
-    source      = "${path.module}/../docker-nextjs-pos/pos-app"
+    source      = "${path.module}/../../pos-app"
     destination = "${each.value.deploy_base_path}/${each.key}"
   }
 

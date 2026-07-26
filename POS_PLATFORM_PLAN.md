@@ -60,10 +60,13 @@ Do not require QR customers to be permanent users at first. They are temporary t
 Later, customers can optionally sign up or log in through the customer portal to become members. A member account should be separate from staff authorization:
 
 - customer/member accounts can view order history and loyalty points
+- customer/member accounts can quickly reorder previous items
 - employee accounts can access POS and owner/staff tools through `EmployeeProfile`
 - customers should never get an `EmployeeProfile`
 
 Employee login is also the foundation for accountability. Any sensitive staff action should eventually be tied to an employee account, especially when cash handling is added.
+
+Manager approval should be lightweight for floor actions. A manager code number can act as a second approval layer for sensitive actions without requiring a full account switch on the POS device.
 
 Examples:
 
@@ -71,8 +74,10 @@ Examples:
 cash drawer opened
 cash payment received
 discount applied
+table session canceled
 order voided
 refund issued
+tab refunded
 menu price changed
 employee created
 table checked out
@@ -279,6 +284,8 @@ Member features:
 - view loyalty points balance
 - view available rewards
 - optionally view order history
+- reorder dishes from previous table or takeout orders
+- see personalized favorite dishes based on how many times they ordered each item
 - attach a table order to their member account before checkout
 
 Owner/manager controls:
@@ -429,6 +436,7 @@ Focus:
 - Enable/disable items.
 - Set prices.
 - Group items by category.
+- Support owner-defined serving scales such as small/medium/large, half/whole, half-and-half, double portions, weight-based pricing, or other restaurant-specific size models.
 
 Done when:
 
@@ -443,7 +451,7 @@ Status: 🟡 In progress
 - Reusable ingredients can be attached to menu items for allergy visibility and future inventory.
 - Menu item image upload is backed by Cloudflare R2 when storage env vars are configured.
 - Category keys are derived from owner-friendly category labels.
-- More polished translations, modifier swaps, and bulk editing are still needed.
+- More polished translations, modifier swaps, serving scale options, and bulk editing are still needed.
 
 ### 🟡 6. Customer Membership And Loyalty Foundation
 
@@ -621,6 +629,7 @@ Focus:
 - Closed menu cards should still show a small allergy/customization indicator when relevant.
 - Customer can remove optional ingredients.
 - Customer can choose allowed swaps or replacements when the owner marks ingredients as swappable.
+- Customer can choose owner-defined size/scale options when an item supports them, such as small/medium/large, half/whole, double, or weight-based portions.
 - Selected removals/swaps/notes should be stored with the cart item and carried into kitchen orders.
 
 Done when:
@@ -634,7 +643,7 @@ Status: 🟡 In progress
 - Animated item detail modals exist for homepage/menu preview, takeout, and table ordering.
 - Modal shows ingredients, allergy flags, allergen-only removal options, quantity, and structured spice levels for spicy items.
 - Table and takeout cart lines store structured kitchen instructions and removed allergen names for kitchen display.
-- Remaining work: ingredient swaps, richer modifier groups, and tighter mobile UI polish.
+- Remaining work: ingredient swaps, serving scale options, richer modifier groups, and tighter mobile UI polish.
 
 ### ⬜ 13. Staff Orders Dashboard
 
@@ -653,10 +662,12 @@ Focus:
 - Show takeout orders.
 - Show payment status.
 - Let staff help checkout, close, or later void/refund orders.
+- Require manager code approval for sensitive floor actions like canceling a table session, voiding an order, refunding a tab, or overriding payment state.
 
 Done when:
 
 - A server or cashier can understand the current restaurant state without opening the database.
+- Sensitive staff actions record the employee and manager approval code context in the audit log.
 
 Status: ⬜ Not started
 
@@ -732,6 +743,7 @@ Suggested routes:
 Focus:
 
 - Edit menu items, categories, prices, photos, and availability.
+- Configure item option groups for serving scales, add-ons, and business-model-specific pricing.
 - Upload menu item photos without requiring owners to paste image URLs.
 - Configure table layout and table capacity.
 - Configure Stripe connected account.
@@ -787,11 +799,14 @@ Focus:
 - Dine-in vs takeout sales.
 - Platform fees and payment fees.
 - Top menu items.
+- Per-menu-item order counts across dine-in and takeout.
+- Per-customer favorite item counts for account reorder and loyalty insights.
 - CSV exports by month and year.
 
 Done when:
 
 - A restaurant owner can review sales without using Stripe or the database directly.
+- A restaurant owner can see the most popular dishes overall and the customer can see their own frequently ordered dishes.
 
 Status: ⬜ Not started
 

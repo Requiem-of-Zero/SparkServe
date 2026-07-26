@@ -22,7 +22,8 @@ export const metadata: Metadata = {
   },
 };
 
-const themeToggleEnabled = process.env.NEXT_PUBLIC_THEME_TOGGLE_ENABLED !== "false";
+const themeToggleEnabled =
+  process.env.NEXT_PUBLIC_THEME_TOGGLE_ENABLED !== "false";
 
 export default function RootLayout({
   children,
@@ -34,7 +35,7 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body suppressHydrationWarning className="min-h-full flex flex-col">
         {children}
         <ThemeToggle enabled={themeToggleEnabled} />
       </body>
