@@ -10,7 +10,6 @@
     "test": "vitest run",
     "db:seed": "tsx prisma/seed.ts",
     "dev:socket": "tsx server/table-sessions-server.ts",
-    "start:socket": "tsx server/table-sessions-server.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -28,10 +27,10 @@
     "react-dom": "19.2.4",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
-    "stripe": "^22.3.0"
+    "stripe": "^22.3.0",
+    "@tailwindcss/postcss": "^4"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/pg": "^8.20.0",
     "@types/react": "^19",
