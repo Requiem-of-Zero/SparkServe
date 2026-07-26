@@ -53,14 +53,16 @@ async function generateUniqueEmployeeCode() {
 }
 
 async function createAuthUserWithEmployeeProfile({
-  name,
+  firstName,
+  lastName,
   displayName,
   email,
   password,
   confirmPassword,
   role,
 }: {
-  name: string;
+  firstName: string;
+  lastName: string;
   displayName: string | null;
   email: string;
   password: string;
@@ -72,15 +74,16 @@ async function createAuthUserWithEmployeeProfile({
   }
 
   const employeeCode = await generateUniqueEmployeeCode();
+  const fullName = `${firstName} ${lastName}`.trim();
 
   // Better Auth creates the user plus hashed password account.
   // The private staff code is stored on EmployeeProfile.loginCode below.
   const result = await auth.api.signUpEmail({
     body: {
-      name,
+      name: fullName,
       email,
       password,
-      displayUsername: displayName ?? name,
+      displayUsername: displayName ?? fullName,
     },
     headers: await headers(),
   });
@@ -88,6 +91,8 @@ async function createAuthUserWithEmployeeProfile({
   const employeeProfile = await prisma.employeeProfile.create({
     data: {
       userId: result.user.id,
+      firstName,
+      lastName,
       loginCode: employeeCode,
       role,
       hiredAt: new Date(),
@@ -111,7 +116,8 @@ export async function bootstrapOwnerAction(formData: FormData) {
   const email = readRequiredString(formData, "email");
   const { employeeCode: code, employeeProfile } =
     await createAuthUserWithEmployeeProfile({
-      name: readRequiredString(formData, "name"),
+      firstName: readRequiredString(formData, "firstName"),
+      lastName: readRequiredString(formData, "lastName"),
       displayName: readOptionalString(formData, "displayName"),
       email,
       password: readRequiredString(formData, "password"),
@@ -124,7 +130,12 @@ export async function bootstrapOwnerAction(formData: FormData) {
     employeeProfileId: employeeProfile.id,
     entityType: "EmployeeProfile",
     entityId: employeeProfile.id,
-    metadata: { email, role: "OWNER" },
+    metadata: {
+      email,
+      firstName: employeeProfile.firstName,
+      lastName: employeeProfile.lastName,
+      role: "OWNER",
+    },
   });
 
   redirect(`${OWNER_EMPLOYEES_PATH}?created=${code}&role=OWNER`);
@@ -141,7 +152,8 @@ export async function createEmployeeAction(formData: FormData) {
   const email = readRequiredString(formData, "email");
   const { employeeCode: code, employeeProfile } =
     await createAuthUserWithEmployeeProfile({
-      name: readRequiredString(formData, "name"),
+      firstName: readRequiredString(formData, "firstName"),
+      lastName: readRequiredString(formData, "lastName"),
       displayName: readOptionalString(formData, "displayName"),
       email,
       password: readRequiredString(formData, "password"),
@@ -157,6 +169,8 @@ export async function createEmployeeAction(formData: FormData) {
     metadata: {
       role,
       email,
+      firstName: employeeProfile.firstName,
+      lastName: employeeProfile.lastName,
     },
   });
 
@@ -226,4 +240,100 @@ export async function rotateAllEmployeeCodesAction() {
   );
 
   redirect(`${OWNER_EMPLOYEES_PATH}?rotated=${rotated}`);
+}
+
+// Owner-only action for removing staff access without deleting history.
+export async function deactivateEmployeeAction(employeeId: number) {
+  const owner = await requireOwner();
+
+  if (!Number.isInteger(employeeId) || employeeId <= 0) {
+    redirect(`${OWNER_EMPLOYEES_PATH}?status=missing`);
+  }
+
+  if (employeeId === owner.id) {
+    redirect(`${OWNER_EMPLOYEES_PATH}?status=self-deactivate-blocked`);
+  }
+
+  const employee = await prisma.employeeProfile.findUnique({
+    where: { id: employeeId },
+    select: { id: true, role: true, active: true, user: { select: { email: true } } },
+  });
+
+  if (!employee) {
+    redirect(`${OWNER_EMPLOYEES_PATH}?status=missing`);
+  }
+
+  if (employee.role === EmployeeRole.OWNER) {
+    const activeOwnerCount = await prisma.employeeProfile.count({
+      where: {
+        role: EmployeeRole.OWNER,
+        active: true,
+        resignedAt: null,
+      },
+    });
+
+    if (activeOwnerCount <= 1) {
+      redirect(`${OWNER_EMPLOYEES_PATH}?status=last-owner-blocked`);
+    }
+  }
+
+  await prisma.employeeProfile.update({
+    where: { id: employee.id },
+    data: {
+      active: false,
+      resignedAt: new Date(),
+    },
+  });
+
+  await writeAuditEvent({
+    action: "EMPLOYEE_DEACTIVATED",
+    employeeProfileId: owner.id,
+    entityType: "EmployeeProfile",
+    entityId: employee.id,
+    metadata: {
+      targetRole: employee.role,
+      email: employee.user.email,
+    },
+  });
+
+  redirect(`${OWNER_EMPLOYEES_PATH}?status=deactivated`);
+}
+
+// Owner-only action for restoring staff access to an existing employee profile.
+export async function reactivateEmployeeAction(employeeId: number) {
+  const owner = await requireOwner();
+
+  if (!Number.isInteger(employeeId) || employeeId <= 0) {
+    redirect(`${OWNER_EMPLOYEES_PATH}?status=missing`);
+  }
+
+  const employee = await prisma.employeeProfile.findUnique({
+    where: { id: employeeId },
+    select: { id: true, role: true, user: { select: { email: true } } },
+  });
+
+  if (!employee) {
+    redirect(`${OWNER_EMPLOYEES_PATH}?status=missing`);
+  }
+
+  await prisma.employeeProfile.update({
+    where: { id: employee.id },
+    data: {
+      active: true,
+      resignedAt: null,
+    },
+  });
+
+  await writeAuditEvent({
+    action: "EMPLOYEE_REACTIVATED",
+    employeeProfileId: owner.id,
+    entityType: "EmployeeProfile",
+    entityId: employee.id,
+    metadata: {
+      targetRole: employee.role,
+      email: employee.user.email,
+    },
+  });
+
+  redirect(`${OWNER_EMPLOYEES_PATH}?status=reactivated`);
 }

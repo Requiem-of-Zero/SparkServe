@@ -3,6 +3,8 @@ import Link from "next/link";
 import {
   bootstrapOwnerAction,
   createEmployeeAction,
+  deactivateEmployeeAction,
+  reactivateEmployeeAction,
   rotateAllEmployeeCodesAction,
   rotateSelectedEmployeeCodesAction,
 } from "@/app/owner/employees/actions";
@@ -21,6 +23,7 @@ type EmployeePageProps = {
     created?: string;
     role?: string;
     rotated?: string;
+    status?: string;
   }>;
 };
 
@@ -56,13 +59,13 @@ export default async function EmployeesPage({ searchParams }: EmployeePageProps)
         <section className="mx-auto max-w-md">
           <h1 className="text-3xl font-bold">Owner login required</h1>
           <p className="mt-2 text-zinc-400">
-            Sign in with the owner email and password to manage staff accounts.
+            Sign in with an owner employee code to manage staff accounts.
           </p>
           <Link
-            href="/owner/login"
+            href="/login"
             className="mt-6 inline-flex rounded-md bg-emerald-500 px-4 py-2 font-semibold text-zinc-950 hover:bg-emerald-400"
           >
-            Go to owner login
+            Go to staff login
           </Link>
         </section>
       </main>
@@ -115,9 +118,11 @@ export default async function EmployeesPage({ searchParams }: EmployeePageProps)
           </div>
         ) : null}
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-[360px_1fr]">
+        {params?.status ? <EmployeeStatusMessage status={params.status} /> : null}
+
+        <div className="mt-8 grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
           <EmployeeForm />
-          <EmployeeTable employees={employees} />
+          <EmployeeTable currentEmployeeId={currentEmployee.id} employees={employees} />
         </div>
       </section>
     </main>
@@ -156,16 +161,19 @@ function BootstrapOwnerScreen({
               {createdCode}
             </p>
             <Link
-              href="/owner/login"
+              href="/login"
               className="mt-4 inline-flex rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-emerald-400"
             >
-              Continue to owner login
+              Continue to staff login
             </Link>
           </div>
         ) : null}
 
         <form action={bootstrapOwnerAction} className="mt-8 space-y-4">
-          <TextInput name="name" label="Owner name" required />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TextInput name="firstName" label="Owner first name" required />
+            <TextInput name="lastName" label="Owner last name" required />
+          </div>
           <TextInput
             name="displayName"
             label="Owner display name"
@@ -202,7 +210,10 @@ function EmployeeForm() {
     >
       <h2 className="text-xl font-semibold">New employee</h2>
       <div className="mt-5 space-y-4">
-        <TextInput name="name" label="Name" required />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextInput name="firstName" label="First name" required />
+          <TextInput name="lastName" label="Last name" required />
+        </div>
         <TextInput
           name="displayName"
           label="Display name"
@@ -236,13 +247,16 @@ function EmployeeForm() {
 }
 
 function EmployeeTable({
+  currentEmployeeId,
   employees,
 }: {
+  currentEmployeeId: number;
   employees: EmployeeWithUser[];
 }) {
   // Owners can see private codes here because this is where they distribute them.
+  // Deactivation preserves audit/order history while preventing future login.
   return (
-    <div className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900">
+    <div className="min-w-0 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 bg-zinc-950 px-4 py-3">
         <div>
           <h2 className="font-semibold">Existing employees</h2>
@@ -258,49 +272,74 @@ function EmployeeTable({
       </div>
 
       <form action={rotateSelectedEmployeeCodesAction}>
-        <table className="w-full text-left text-sm">
-          <thead className="bg-zinc-950 text-zinc-400">
-            <tr>
-              <th className="px-4 py-3">Select</th>
-              <th className="px-4 py-3">Code</th>
-              <th className="px-4 py-3">Employee</th>
-              <th className="px-4 py-3">Role</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Hired</th>
-            </tr>
-          </thead>
-          <tbody>
-            {employees.map((employee) => (
-              <tr key={employee.id} className="border-t border-zinc-800">
-                <td className="px-4 py-3">
-                  <input
-                    name="employeeIds"
-                    type="checkbox"
-                    value={employee.id}
-                    className="h-4 w-4 accent-amber-500"
-                  />
-                </td>
-                <td className="px-4 py-3 font-mono">
-                  {employee.loginCode ?? "Needs code"}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="font-medium">
-                    {employee.user.displayUsername ?? employee.user.name}
-                  </div>
-                  <div className="text-zinc-400">{employee.user.name}</div>
-                  <div className="text-zinc-500">{employee.user.email}</div>
-                </td>
-                <td className="px-4 py-3">{employee.role}</td>
-                <td className="px-4 py-3">
-                  {employee.active && !employee.resignedAt ? "Active" : "Inactive"}
-                </td>
-                <td className="px-4 py-3">
-                  {employee.hiredAt.toLocaleDateString()}
-                </td>
+        <div className="overflow-x-auto">
+          <table className="min-w-[760px] w-full text-left text-sm">
+            <thead className="bg-zinc-950 text-zinc-400">
+              <tr>
+                <th className="px-4 py-3">Select</th>
+                <th className="px-4 py-3">Code</th>
+                <th className="px-4 py-3">Employee</th>
+                <th className="px-4 py-3">Role</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Hired</th>
+                <th className="px-4 py-3">Access</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {employees.map((employee) => (
+                <tr key={employee.id} className="border-t border-zinc-800">
+                  <td className="px-4 py-3">
+                    <input
+                      name="employeeIds"
+                      type="checkbox"
+                      value={employee.id}
+                      className="h-4 w-4 accent-amber-500"
+                    />
+                  </td>
+                  <td className="px-4 py-3 font-mono">
+                    {employee.loginCode ?? "Needs code"}
+                  </td>
+                  <td className="max-w-[260px] px-4 py-3">
+                    <div className="truncate font-medium">
+                      {getEmployeeDisplayName(employee)}
+                    </div>
+                    <div className="truncate text-zinc-400">
+                      {employee.firstName || employee.lastName
+                        ? employee.user.displayUsername ?? employee.user.name
+                        : employee.user.name}
+                    </div>
+                    <div className="truncate text-zinc-500">{employee.user.email}</div>
+                  </td>
+                  <td className="px-4 py-3">{employee.role}</td>
+                  <td className="px-4 py-3">
+                    {employee.active && !employee.resignedAt ? "Active" : "Inactive"}
+                  </td>
+                  <td className="px-4 py-3">
+                    {employee.hiredAt.toLocaleDateString()}
+                  </td>
+                  <td className="px-4 py-3">
+                    {employee.active && !employee.resignedAt ? (
+                      <button
+                        formAction={deactivateEmployeeAction.bind(null, employee.id)}
+                        disabled={employee.id === currentEmployeeId}
+                        className="rounded-md border border-red-800 px-3 py-1.5 text-xs font-semibold text-red-200 hover:bg-red-950 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Deactivate
+                      </button>
+                    ) : (
+                      <button
+                        formAction={reactivateEmployeeAction.bind(null, employee.id)}
+                        className="rounded-md border border-emerald-800 px-3 py-1.5 text-xs font-semibold text-emerald-200 hover:bg-emerald-950"
+                      >
+                        Reactivate
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         <div className="border-t border-zinc-800 px-4 py-3">
           <button className="rounded-md bg-amber-500 px-3 py-2 text-sm font-semibold text-zinc-950 hover:bg-amber-400">
@@ -308,6 +347,55 @@ function EmployeeTable({
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+function getEmployeeDisplayName(employee: EmployeeWithUser) {
+  const structuredName = [employee.firstName, employee.lastName]
+    .filter(Boolean)
+    .join(" ");
+
+  return structuredName || employee.user.displayUsername || employee.user.name;
+}
+
+function EmployeeStatusMessage({ status }: { status: string }) {
+  const messages: Record<string, { tone: "good" | "warn"; message: string }> = {
+    deactivated: {
+      tone: "warn",
+      message: "Employee access was deactivated.",
+    },
+    reactivated: {
+      tone: "good",
+      message: "Employee access was reactivated.",
+    },
+    "self-deactivate-blocked": {
+      tone: "warn",
+      message: "You cannot deactivate your own owner account.",
+    },
+    "last-owner-blocked": {
+      tone: "warn",
+      message: "At least one active owner must remain.",
+    },
+    missing: {
+      tone: "warn",
+      message: "That employee profile could not be found.",
+    },
+  };
+  const statusMessage = messages[status];
+
+  if (!statusMessage) {
+    return null;
+  }
+
+  const className =
+    statusMessage.tone === "good"
+      ? "border-emerald-800 bg-emerald-950 text-emerald-200"
+      : "border-amber-800 bg-amber-950 text-amber-200";
+
+  return (
+    <div className={`mt-6 rounded-lg border p-4 ${className}`}>
+      <p className="text-sm">{statusMessage.message}</p>
     </div>
   );
 }
