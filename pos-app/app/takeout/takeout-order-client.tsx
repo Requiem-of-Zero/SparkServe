@@ -262,7 +262,10 @@ export function TakeoutOrderClient({
         </div>
       </section>
 
-      <aside className="h-fit rounded-lg border border-orange-950/60 bg-[#1a0f0b] p-4 lg:sticky lg:top-5">
+      <aside
+        data-cart-drop-target
+        className="h-fit rounded-lg border border-orange-950/60 bg-[#1a0f0b] p-4 lg:sticky lg:top-5"
+      >
         <h2 className="text-lg font-semibold">Your takeout cart</h2>
         <div className="mt-4 space-y-3">
           {cartLines.length === 0 ? (

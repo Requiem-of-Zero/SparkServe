@@ -176,7 +176,10 @@ export default async function TableSessionPage({
             }))}
           />
           <TableGuestWaitingPanel />
-          <div className="mt-8 rounded-lg border border-zinc-800 bg-zinc-900 p-5">
+          <div
+            data-cart-drop-target
+            className="mt-8 rounded-lg border border-zinc-800 bg-zinc-900 p-5"
+          >
             <h2 className="flex items-center gap-2 text-xl font-semibold">
               <CartIcon />
               <span>Shared cart</span>

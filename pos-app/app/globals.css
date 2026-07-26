@@ -186,6 +186,40 @@ body {
   }
 }
 
+@keyframes cart-item-fly {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9) rotate(0deg);
+  }
+
+  15% {
+    opacity: 1;
+  }
+
+  55% {
+    transform: translate(
+        calc(-50% + var(--cart-fly-x) * 0.62),
+        calc(-50% + var(--cart-fly-y) * 0.35 - 42px)
+      )
+      scale(0.82)
+      rotate(10deg);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(
+        calc(-50% + var(--cart-fly-x)),
+        calc(-50% + var(--cart-fly-y))
+      )
+      scale(0.35)
+      rotate(18deg);
+  }
+}
+
+.cart-item-fly {
+  animation: cart-item-fly 620ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
 /* Temporary bridge while the UI still uses dark zinc utility classes directly. */
 :root[data-theme="light"] .bg-zinc-950 {
   background-color: #ffffff !important;

@@ -38,27 +38,31 @@ export function AddMenuItemButton({
       tableSocket.connect();
     }
 
-    tableSocket.emit(
-      "cart:add-item",
-      {
-        token,
-        menuItemId: item.id,
-        quantity: customization.quantity,
-        note: customization.note,
-        removedIngredientIds: customization.removedIngredientIds,
-        guestName: displayName,
-      },
-      (response: { ok: true } | { ok: false; message: string }) => {
-        setIsAdding(false);
+    await new Promise<void>((resolve, reject) => {
+      tableSocket.emit(
+        "cart:add-item",
+        {
+          token,
+          menuItemId: item.id,
+          quantity: customization.quantity,
+          note: customization.note,
+          removedIngredientIds: customization.removedIngredientIds,
+          guestName: displayName,
+        },
+        (response: { ok: true } | { ok: false; message: string }) => {
+          setIsAdding(false);
 
-        if (!response.ok) {
-          setError(response.message);
-          return;
-        }
+          if (!response.ok) {
+            setError(response.message);
+            reject(new Error(response.message));
+            return;
+          }
 
-        router.refresh();
-      },
-    );
+          router.refresh();
+          resolve();
+        },
+      );
+    });
   }
 
   return (
