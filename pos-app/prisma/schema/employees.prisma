@@ -1,6 +1,8 @@
 model EmployeeProfile {
   id               Int          @id @default(autoincrement())
   userId           String       @unique
+  firstName        String?
+  lastName         String?
   loginCode        String?      @unique
   role             EmployeeRole @default(CASHIER)
   active           Boolean      @default(true)

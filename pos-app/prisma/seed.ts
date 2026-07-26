@@ -316,6 +316,8 @@ async function seedDemoUsers() {
   await prisma.employeeProfile.upsert({
     where: { userId: owner.id },
     update: {
+      firstName: "Demo",
+      lastName: "Owner",
       loginCode: "111111",
       role: EmployeeRole.OWNER,
       active: true,
@@ -323,6 +325,8 @@ async function seedDemoUsers() {
     },
     create: {
       userId: owner.id,
+      firstName: "Demo",
+      lastName: "Owner",
       loginCode: "111111",
       role: EmployeeRole.OWNER,
     },
@@ -337,6 +341,8 @@ async function seedDemoUsers() {
   await prisma.employeeProfile.upsert({
     where: { userId: cashier.id },
     update: {
+      firstName: "Demo",
+      lastName: "Cashier",
       loginCode: "222222",
       role: EmployeeRole.CASHIER,
       active: true,
@@ -344,6 +350,8 @@ async function seedDemoUsers() {
     },
     create: {
       userId: cashier.id,
+      firstName: "Demo",
+      lastName: "Cashier",
       loginCode: "222222",
       role: EmployeeRole.CASHIER,
     },
