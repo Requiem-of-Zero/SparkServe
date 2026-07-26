@@ -54,6 +54,64 @@ function getRemovedIngredientNames({
     .join(", ");
 }
 
+// Shows the canonical table owner and order verification mode from the server
+// session so every QR guest sees the same security state.
+function TableSessionStatusCard({
+  ownerDisplayName,
+  ownerPhoneVerified,
+  orderVerificationRequired,
+}: {
+  ownerDisplayName?: string;
+  ownerPhoneVerified: boolean;
+  orderVerificationRequired: boolean;
+}) {
+  return (
+    <div className="mt-4 grid gap-3 rounded-lg border border-zinc-800 bg-zinc-900 p-4 sm:grid-cols-2">
+      <div>
+        <p className="text-xs uppercase tracking-wide text-zinc-500">
+          Current table owner
+        </p>
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <p className="font-semibold text-white">
+            {ownerDisplayName ?? "Waiting for first guest"}
+          </p>
+          {ownerPhoneVerified ? (
+            <span className="rounded border border-emerald-800 bg-emerald-950/25 px-2 py-0.5 text-xs uppercase tracking-wide text-emerald-300">
+              Phone verified
+            </span>
+          ) : (
+            <span className="rounded border border-amber-800 bg-amber-950/30 px-2 py-0.5 text-xs uppercase tracking-wide text-amber-300">
+              Setup pending
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div>
+        <p className="text-xs uppercase tracking-wide text-zinc-500">
+          Order PIN verification
+        </p>
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <span
+            className={`rounded border px-2 py-0.5 text-xs uppercase tracking-wide ${
+              orderVerificationRequired
+                ? "border-amber-700 bg-amber-950/30 text-amber-300"
+                : "border-emerald-800 bg-emerald-950/25 text-emerald-300"
+            }`}
+          >
+            {orderVerificationRequired ? "Enabled" : "Disabled"}
+          </span>
+          <p className="text-sm text-zinc-400">
+            {orderVerificationRequired
+              ? "A 6-digit code is required before each kitchen order."
+              : "Orders can be sent after the owner phone is verified once."}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default async function TableSessionPage({
   params,
 }: TableSessionPageProps) {
@@ -71,20 +129,6 @@ export default async function TableSessionPage({
     ? `samwo-table-identity:${token}:user:${user.id}`
     : `samwo-table-identity:${token}:guest`;
   const guestIdentityStorageKey = `samwo-table-identity:${token}:guest`;
-  const verifiedOwner = await prisma.tableSessionParticipant.findFirst({
-    where: {
-      tableSessionId: session.id,
-      role: "OWNER",
-      phoneVerifiedAt: {
-        not: null,
-      },
-    },
-    select: { phoneVerifiedAt: true },
-  });
-  const canOrder = canTableAcceptOrders({
-    sessionStatus: session.status,
-    ownerPhoneVerifiedAt: verifiedOwner?.phoneVerifiedAt,
-  });
   const participants = await prisma.tableSessionParticipant.findMany({
     where: { tableSessionId: session.id },
     orderBy: { createdAt: "asc" },
@@ -92,7 +136,15 @@ export default async function TableSessionPage({
       publicId: true,
       displayName: true,
       role: true,
+      phoneVerifiedAt: true,
     },
+  });
+  const ownerParticipant = participants.find(
+    (participant) => participant.role === "OWNER",
+  );
+  const canOrder = canTableAcceptOrders({
+    sessionStatus: session.status,
+    ownerPhoneVerifiedAt: ownerParticipant?.phoneVerifiedAt,
   });
   const pendingTransfers = await prisma.tableSessionOwnershipTransfer.findMany({
     where: {
@@ -159,6 +211,11 @@ export default async function TableSessionPage({
           </h1>
 
           <p className="mt-2 text-zinc-400">Session status: {session.status}</p>
+          <TableSessionStatusCard
+            ownerDisplayName={ownerParticipant?.displayName}
+            ownerPhoneVerified={Boolean(ownerParticipant?.phoneVerifiedAt)}
+            orderVerificationRequired={session.orderVerificationRequired}
+          />
           <TableLiveClient token={token} />
           <TableOwnerSetupPanel token={token} />
           <TableOrderSecurityPanel
