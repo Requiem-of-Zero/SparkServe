@@ -10,6 +10,8 @@ model DiningTable {
   updatedAt DateTime @updatedAt
 
   sessions TableSession[]
+  requestedTableSessionTransfersFrom TableSessionTransferRequest[] @relation("TableSessionTransferFromTable")
+  requestedTableSessionTransfersTo   TableSessionTransferRequest[] @relation("TableSessionTransferToTable")
 
   @@unique([row, col])
 }
@@ -34,8 +36,35 @@ model TableSession {
   checkouts                 Checkout[]
   participants              TableSessionParticipant[]
   ownershipTransferRequests TableSessionOwnershipTransfer[]
+  staffTransferRequests     TableSessionTransferRequest[]
 
   @@index([tableId, status])
+}
+
+/// Staff-requested table move that a manager/owner must approve or deny.
+model TableSessionTransferRequest {
+  id                    Int                        @id @default(autoincrement())
+  tableSessionId        Int
+  requestedByEmployeeId Int
+  reviewedByEmployeeId  Int?
+  fromTableId           Int
+  toTableId             Int
+  status                TableSessionTransferStatus @default(PENDING)
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
+  respondedAt           DateTime?
+
+  tableSession        TableSession     @relation(fields: [tableSessionId], references: [id], onDelete: Cascade)
+  requestedByEmployee EmployeeProfile  @relation("TableSessionTransferRequester", fields: [requestedByEmployeeId], references: [id])
+  reviewedByEmployee  EmployeeProfile? @relation("TableSessionTransferReviewer", fields: [reviewedByEmployeeId], references: [id], onDelete: SetNull)
+  fromTable           DiningTable      @relation("TableSessionTransferFromTable", fields: [fromTableId], references: [id])
+  toTable             DiningTable      @relation("TableSessionTransferToTable", fields: [toTableId], references: [id])
+
+  @@index([status, createdAt])
+  @@index([tableSessionId, status])
+  @@index([requestedByEmployeeId, createdAt])
+  @@index([reviewedByEmployeeId, createdAt])
+  @@index([toTableId, status])
 }
 
 /// One browser/device/person connected to a table session.
@@ -118,6 +147,13 @@ enum TableSessionParticipantRole {
 enum OwnershipTransferStatus {
   PENDING
   ACCEPTED
+  DENIED
+  CANCELLED
+}
+
+enum TableSessionTransferStatus {
+  PENDING
+  APPROVED
   DENIED
   CANCELLED
 }

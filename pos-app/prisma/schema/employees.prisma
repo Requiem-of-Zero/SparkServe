@@ -13,6 +13,8 @@ model EmployeeProfile {
   user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   checkedOutOrders Order[]
   auditEvents      AuditEvent[]
+  requestedTableSessionTransfers TableSessionTransferRequest[] @relation("TableSessionTransferRequester")
+  reviewedTableSessionTransfers  TableSessionTransferRequest[] @relation("TableSessionTransferReviewer")
 }
 
 enum EmployeeRole {
