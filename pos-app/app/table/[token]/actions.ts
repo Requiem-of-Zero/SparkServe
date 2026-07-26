@@ -10,6 +10,7 @@ import {
 } from "@/lib/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { calculateOrderTotals } from "@/lib/checkout";
+import { notifyFloorChanged } from "@/lib/floor-realtime";
 import { notifyKitchenQueueChanged } from "@/lib/kitchen-realtime";
 import { canParticipantRespondToOwnershipTransfer } from "@/lib/table-ownership-transfer";
 import {
@@ -375,6 +376,8 @@ export async function requestOwnerPhoneVerificationAction(
       }),
     ]);
 
+    await notifyFloorChanged("session-security-updated");
+
     return {
       devCode: code,
       message: "Verification code generated. SMS provider comes later.",
@@ -440,6 +443,7 @@ export async function verifyOwnerPhoneCodeAction(
     });
 
     revalidatePath(`/table/${token}`);
+    await notifyFloorChanged("owner-verified");
 
     return {
       message: "Phone verified for this table session.",
@@ -476,6 +480,7 @@ export async function updateOrderVerificationPreferenceAction(
     });
 
     revalidatePath(`/table/${token}`);
+    await notifyFloorChanged("session-security-updated");
 
     return {
       message: orderVerificationRequired
@@ -500,16 +505,23 @@ export async function requestKitchenOrderCodeAction(
 ): Promise<SubmitKitchenState> {
   try {
     const token = readRequiredString(formData, "token");
-    const participantPublicId = readRequiredString(
-      formData,
-      "participantPublicId",
-    );
-    const { participant } = await requireOwnerParticipant({
-      token,
-      participantPublicId,
+    const session = await prisma.tableSession.findUnique({
+      where: { publicToken: token },
     });
 
-    if (!participant.phoneVerifiedAt || !participant.phoneNumber) {
+    if (!session || session.status !== "OPEN") {
+      throw new Error("Table session is not open.");
+    }
+
+    const verifiedOwner = await prisma.tableSessionParticipant.findFirst({
+      where: {
+        tableSessionId: session.id,
+        role: TableSessionParticipantRole.OWNER,
+        phoneVerifiedAt: { not: null },
+      },
+    });
+
+    if (!verifiedOwner?.phoneVerifiedAt || !verifiedOwner.phoneNumber) {
       throw new Error("Verify the table owner phone before sending to kitchen.");
     }
 
@@ -517,13 +529,13 @@ export async function requestKitchenOrderCodeAction(
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     // This is the per-order approval code. The SMS provider will later send it
-    // to participant.phoneNumber; dev mode returns the code for local testing.
+    // to the owner's phone; dev mode returns the code for local testing.
     await prisma.tableSessionParticipant.update({
-      where: { id: participant.id },
+      where: { id: verifiedOwner.id },
       data: {
         phoneVerificationCodeHash: hashVerificationCode({
           code,
-          participantPublicId,
+          participantPublicId: verifiedOwner.publicId,
         }),
         phoneVerificationExpiresAt: expiresAt,
       },
@@ -531,7 +543,7 @@ export async function requestKitchenOrderCodeAction(
 
     return {
       devCode: code,
-      message: "Kitchen submit code generated. SMS provider comes later.",
+      message: "Kitchen submit code sent to the table owner.",
       status: "code-sent",
     };
   } catch (error) {
@@ -698,6 +710,7 @@ export async function submitCartToKitchenAction(
 
     revalidatePath(`/table/${token}`);
     await notifyKitchenQueueChanged("dine-in-submitted");
+    await notifyFloorChanged("kitchen-order-submitted");
 
     return {
       message: `Order #${order.id} sent to kitchen.`,

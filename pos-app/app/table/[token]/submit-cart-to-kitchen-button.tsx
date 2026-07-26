@@ -22,8 +22,7 @@ export function SubmitCartToKitchenButton({
   orderVerificationRequired: boolean;
 }) {
   const router = useRouter();
-  const { canOrder, participantPublicId, participantRole, isReady } =
-    useTableIdentity();
+  const { canOrder, participantPublicId, isReady } = useTableIdentity();
   const [requestState, requestAction, isRequestPending] = useActionState(
     requestKitchenOrderCodeAction,
     initialState,
@@ -32,9 +31,8 @@ export function SubmitCartToKitchenButton({
     submitCartToKitchenAction,
     initialState,
   );
-  const isOwner = participantRole === "OWNER";
   const hasParticipant = Boolean(participantPublicId);
-  const canRequestCode = isReady && canOrder && isOwner && hasParticipant;
+  const canRequestCode = isReady && canOrder;
   const canSubmit = isReady && canOrder && hasParticipant;
 
   useEffect(() => {
@@ -48,18 +46,13 @@ export function SubmitCartToKitchenButton({
       {orderVerificationRequired ? (
         <form action={requestAction} className="space-y-2">
           <input type="hidden" name="token" value={token} />
-          <input
-            type="hidden"
-            name="participantPublicId"
-            value={participantPublicId ?? ""}
-          />
           <button
             type="submit"
             disabled={isRequestPending || !canRequestCode}
             suppressHydrationWarning
             className="w-full rounded-md border border-amber-500 px-4 py-2 text-sm font-semibold text-amber-100 hover:bg-amber-950 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isRequestPending ? "Sending code..." : "Send kitchen submit code"}
+            {isRequestPending ? "Sending code..." : "Send code to table owner"}
           </button>
         </form>
       ) : (
@@ -114,9 +107,9 @@ export function SubmitCartToKitchenButton({
         </button>
       </form>
 
-      {orderVerificationRequired && !isOwner ? (
+      {orderVerificationRequired ? (
         <p className="text-xs text-zinc-400">
-          Ask the verified table owner for the current kitchen submit code.
+          The 6-digit code goes to the verified table owner phone.
         </p>
       ) : null}
       {submitState.message ? (
