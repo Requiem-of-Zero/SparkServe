@@ -729,8 +729,13 @@ Status: 🟡 In progress
 - ✅ Shows active tables, current table status, guests, cart quantity, submitted order count, and unpaid totals.
 - ✅ Links occupied tables back to the active table session and kitchen queue.
 - ✅ Added staff-requested table-session transfer with manager/owner accept-deny approval and audit logging.
-- 🟡 Next: add realtime refresh events for table/cart/order/payment changes.
-- 🟡 Next: add manager-code confirmation for sensitive floor actions such as cancel session, close table, void order, and payment override.
+- ✅ Added realtime floor refresh events for guest joins, cart changes, owner verification, kitchen submissions, and table moves.
+- ✅ QR table sessions show the current session owner and whether order PIN verification is enabled.
+- ✅ Table joins now respect the owner-confirmed attendee count and block new devices after the party is full.
+- ✅ Added manager/owner floor controls for adjusting attendee count and cancelling bad table sessions with audit logging.
+- 🟡 Next: add manager-code confirmation before sensitive floor actions execute.
+- 🟡 Next: add explicit staff controls for clearing stale participants and closing completed sessions.
+- 🟡 Next: add void order and payment override actions after staff orders dashboard exists.
 - ⬜ Later: owner-configured drag/drop floor layout after `/owner/settings` table configuration exists.
 
 ### 🟡 16. Owner Menu And Restaurant Settings
