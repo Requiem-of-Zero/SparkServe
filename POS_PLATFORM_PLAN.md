@@ -702,7 +702,7 @@ Status: ⬜ Not started
 
 - Build after staff orders and waitlist so the floor view can summarize real operational state.
 
-### ⬜ 15. Table Floor View
+### 🟡 15. Table Floor View
 
 Build a table status board for employees.
 
@@ -723,9 +723,14 @@ Done when:
 
 - Staff can glance at one screen and understand the dining room.
 
-Status: ⬜ Not started
+Status: 🟡 In progress
 
-- Depends on active table, order, and waitlist data being stable enough to configure.
+- ✅ Added `/staff/tables` as the first staff floor view.
+- ✅ Shows active tables, current table status, guests, cart quantity, submitted order count, and unpaid totals.
+- ✅ Links occupied tables back to the active table session and kitchen queue.
+- 🟡 Next: add realtime refresh events for table/cart/order/payment changes.
+- 🟡 Next: add manager-code-protected floor actions such as cancel session, close table, void order, and payment override.
+- ⬜ Later: owner-configured drag/drop floor layout after `/owner/settings` table configuration exists.
 
 ### 🟡 16. Owner Menu And Restaurant Settings
 

@@ -34,7 +34,7 @@ const staffActions = [
     href: "/staff/tables",
     title: "Floor View",
     description: "See table status across the dining room.",
-    status: "Planned",
+    status: "New",
   },
   {
     href: "/customer/account",
