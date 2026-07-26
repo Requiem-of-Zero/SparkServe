@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { MenuItemDetailModal } from "@/app/components/menu-item-detail-modal";
+import { useCartFlyAnimation } from "@/app/components/use-cart-fly-animation";
 import type {
   CustomerMenuItem,
   MenuItemCustomization,
@@ -20,6 +21,8 @@ export function AddMenuItemButton({
 }) {
   const router = useRouter();
   const { canOrder, displayName, isReady } = useTableIdentity();
+  const quickAddButtonRef = useRef<HTMLButtonElement>(null);
+  const { animateItemToCart, cartFlyAnimation } = useCartFlyAnimation();
   const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const disabled = !isReady || !canOrder;
@@ -65,22 +68,40 @@ export function AddMenuItemButton({
     });
   }
 
+  async function quickAddItem() {
+    await addItem({
+      quantity: 1,
+      note: "",
+      removedIngredientIds: [],
+    });
+    await animateItemToCart(quickAddButtonRef.current, item);
+  }
+
   return (
     <div className="space-y-2">
-      <MenuItemDetailModal
-        item={item}
-        addLabel={isAdding ? "Adding..." : "Add to shared cart"}
-        disabled={disabled || isAdding}
-        disabledMessage="Waiting for the table owner to confirm this session."
-        onAdd={addItem}
-      >
-        <span
-          className="inline-flex min-h-9 items-center rounded-md bg-emerald-500 px-3 text-sm font-semibold text-zinc-950 hover:bg-emerald-400"
-          suppressHydrationWarning
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <button
+          ref={quickAddButtonRef}
+          type="button"
+          onClick={quickAddItem}
+          disabled={disabled || isAdding}
+          className="inline-flex min-h-9 items-center rounded-md bg-emerald-500 px-3 text-sm font-semibold text-zinc-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Customize
-        </span>
-      </MenuItemDetailModal>
+          {isAdding ? "Adding..." : "Add"}
+        </button>
+
+        <MenuItemDetailModal
+          item={item}
+          addLabel={isAdding ? "Adding..." : "Add to shared cart"}
+          disabled={disabled || isAdding}
+          disabledMessage="Waiting for the table owner to confirm this session."
+          onAdd={addItem}
+        >
+          <span className="inline-flex min-h-9 items-center rounded-md border border-zinc-700 px-3 text-sm font-semibold text-zinc-200 hover:bg-zinc-800">
+            Customize
+          </span>
+        </MenuItemDetailModal>
+      </div>
 
       {isReady && !canOrder ? (
         <p className="text-xs text-amber-300">
@@ -89,6 +110,7 @@ export function AddMenuItemButton({
       ) : null}
 
       {error ? <p className="text-xs text-red-300">{error}</p> : null}
+      {cartFlyAnimation}
     </div>
   );
 }

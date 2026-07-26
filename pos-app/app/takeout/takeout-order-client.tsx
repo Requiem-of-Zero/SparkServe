@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { MenuItemDetailModal } from "@/app/components/menu-item-detail-modal";
+import { useCartFlyAnimation } from "@/app/components/use-cart-fly-animation";
 import {
   formatMenuPrice,
   type CustomerMenuItem,
@@ -246,15 +247,10 @@ export function TakeoutOrderClient({
                       Customizable
                     </span>
                   ) : null}
-                  <MenuItemDetailModal
+                  <TakeoutMenuItemActions
                     item={item}
-                    addLabel="Add to takeout cart"
                     onAdd={(customization) => addItem(item, customization)}
-                  >
-                    <span className="inline-flex h-9 items-center rounded-md bg-[#ff6a1a] px-3 text-sm font-semibold text-[#160b08] hover:bg-[#ffd166]">
-                      Customize
-                    </span>
-                  </MenuItemDetailModal>
+                  />
                 </div>
               </div>
             </article>
@@ -350,5 +346,49 @@ export function TakeoutOrderClient({
         </div>
       </aside>
     </div>
+  );
+}
+
+// Keeps the default add action fast while leaving richer choices in Customize.
+function TakeoutMenuItemActions({
+  item,
+  onAdd,
+}: {
+  item: CustomerMenuItem;
+  onAdd: (customization: MenuItemCustomization) => void | Promise<void>;
+}) {
+  const quickAddButtonRef = useRef<HTMLButtonElement>(null);
+  const { animateItemToCart, cartFlyAnimation } = useCartFlyAnimation();
+
+  async function quickAddItem() {
+    await onAdd({
+      quantity: 1,
+      note: "",
+      removedIngredientIds: [],
+    });
+    await animateItemToCart(quickAddButtonRef.current, item);
+  }
+
+  return (
+    <>
+      <button
+        ref={quickAddButtonRef}
+        type="button"
+        onClick={quickAddItem}
+        className="inline-flex h-9 items-center rounded-md bg-[#ff6a1a] px-3 text-sm font-semibold text-[#160b08] hover:bg-[#ffd166]"
+      >
+        Add
+      </button>
+      <MenuItemDetailModal
+        item={item}
+        addLabel="Add to takeout cart"
+        onAdd={onAdd}
+      >
+        <span className="inline-flex h-9 items-center rounded-md border border-orange-200/25 px-3 text-sm font-semibold text-zinc-200 hover:bg-orange-100/10">
+          Customize
+        </span>
+      </MenuItemDetailModal>
+      {cartFlyAnimation}
+    </>
   );
 }

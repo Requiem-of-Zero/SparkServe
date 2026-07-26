@@ -4,10 +4,10 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
   type ReactNode,
 } from "react";
 
+import { useCartFlyAnimation } from "@/app/components/use-cart-fly-animation";
 import {
   formatMenuPrice,
   type CustomerMenuItem,
@@ -21,15 +21,6 @@ type MenuItemDetailModalProps = {
   disabled?: boolean;
   disabledMessage?: string;
   onAdd?: (customization: MenuItemCustomization) => void | Promise<void>;
-};
-
-type FlyingCartItem = {
-  deltaX: number;
-  deltaY: number;
-  imageUrl?: string | null;
-  left: number;
-  name: string;
-  top: number;
 };
 
 function AllergyIcon() {
@@ -69,9 +60,7 @@ export function MenuItemDetailModal({
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
-  const [flyingCartItem, setFlyingCartItem] = useState<FlyingCartItem | null>(
-    null,
-  );
+  const { animateItemToCart, cartFlyAnimation } = useCartFlyAnimation();
   const [quantity, setQuantity] = useState(1);
   const [spiceLevel, setSpiceLevel] = useState<(typeof spiceLevels)[number]>(
     "Medium",
@@ -93,42 +82,6 @@ export function MenuItemDetailModal({
     );
   }
 
-  function animateItemToCart() {
-    const sourceRect = addButtonRef.current?.getBoundingClientRect();
-    const targetRect = document
-      .querySelector("[data-cart-drop-target]")
-      ?.getBoundingClientRect();
-
-    if (!sourceRect || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      return Promise.resolve();
-    }
-
-    const sourceX = sourceRect.left + sourceRect.width / 2;
-    const sourceY = sourceRect.top + sourceRect.height / 2;
-    const targetX = targetRect
-      ? targetRect.left + targetRect.width / 2
-      : window.innerWidth - 56;
-    const targetY = targetRect
-      ? targetRect.top + Math.min(targetRect.height / 2, 96)
-      : window.innerHeight - 56;
-
-    setFlyingCartItem({
-      deltaX: targetX - sourceX,
-      deltaY: targetY - sourceY,
-      imageUrl: item.imageUrl,
-      left: sourceX,
-      name: item.name,
-      top: sourceY,
-    });
-
-    return new Promise<void>((resolve) => {
-      window.setTimeout(() => {
-        setFlyingCartItem(null);
-        resolve();
-      }, 620);
-    });
-  }
-
   async function handleAdd() {
     if (!onAdd || disabled) {
       return;
@@ -142,7 +95,7 @@ export function MenuItemDetailModal({
         note: item.spicy ? `Spice: ${spiceLevel}` : "",
         removedIngredientIds,
       });
-      await animateItemToCart();
+      await animateItemToCart(addButtonRef.current, item);
       setIsOpen(false);
       setQuantity(1);
       setSpiceLevel("Medium");
@@ -392,32 +345,7 @@ export function MenuItemDetailModal({
         </div>
       ) : null}
 
-      {flyingCartItem ? (
-        <div
-          aria-hidden="true"
-          className="cart-item-fly pointer-events-none fixed z-[60] h-14 w-14 overflow-hidden rounded-lg border border-[#ffd166]/70 bg-[#160b08] shadow-lg shadow-orange-950/50"
-          style={
-            {
-              left: flyingCartItem.left,
-              top: flyingCartItem.top,
-              "--cart-fly-x": `${flyingCartItem.deltaX}px`,
-              "--cart-fly-y": `${flyingCartItem.deltaY}px`,
-            } as CSSProperties
-          }
-        >
-          {flyingCartItem.imageUrl ? (
-            <img
-              src={flyingCartItem.imageUrl}
-              alt=""
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center px-1 text-center text-[10px] font-semibold text-[#ffd166]">
-              {flyingCartItem.name}
-            </div>
-          )}
-        </div>
-      ) : null}
+      {cartFlyAnimation}
     </>
   );
 }
