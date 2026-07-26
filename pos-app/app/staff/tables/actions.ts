@@ -17,6 +17,11 @@ export type TransferTableSessionState = {
   status: "idle" | "requested" | "approved" | "denied" | "error";
 };
 
+export type FloorSessionControlState = {
+  message?: string;
+  status: "idle" | "updated" | "cancelled" | "error";
+};
+
 function readPositiveInteger(formData: FormData, key: string) {
   const value = Number(formData.get(key));
 
@@ -25,6 +30,26 @@ function readPositiveInteger(formData: FormData, key: string) {
   }
 
   return value;
+}
+
+function readAttendeeCount(formData: FormData) {
+  const attendeeCount = Number(formData.get("attendeeCount"));
+
+  if (!Number.isInteger(attendeeCount) || attendeeCount < 1 || attendeeCount > 99) {
+    throw new Error("Attendee count must be between 1 and 99.");
+  }
+
+  return attendeeCount;
+}
+
+async function requireManagerFloorAction() {
+  const employee = await requireActiveEmployee();
+
+  if (!canManageFloorActions(employee.role)) {
+    throw new Error("Only managers and owners can change floor sessions.");
+  }
+
+  return employee;
 }
 
 function formatTableLabel(table: {
@@ -87,6 +112,140 @@ async function getTransferDestination(destinationTableId: number) {
   }
 
   return { destinationOpenSession, destinationTable };
+}
+
+export async function updateTableSessionAttendeeCountAction(
+  _previousState: FloorSessionControlState,
+  formData: FormData,
+): Promise<FloorSessionControlState> {
+  try {
+    const employee = await requireManagerFloorAction();
+    const tableSessionId = readPositiveInteger(formData, "tableSessionId");
+    const attendeeCount = readAttendeeCount(formData);
+    const session = await prisma.tableSession.findUnique({
+      where: { id: tableSessionId },
+      include: { table: true },
+    });
+
+    if (!session || session.status !== TableSessionStatus.OPEN) {
+      throw new Error("Only open table sessions can be updated.");
+    }
+
+    const previousAttendeeCount = session.attendeeCount;
+
+    await prisma.tableSession.update({
+      where: { id: session.id },
+      data: { attendeeCount },
+    });
+
+    await writeAuditEvent({
+      action: "TABLE_SESSION_ATTENDEE_COUNT_UPDATED",
+      employeeProfileId: employee.id,
+      entityType: "TableSession",
+      entityId: session.id,
+      metadata: {
+        publicToken: session.publicToken,
+        tableId: session.tableId,
+        tableLabel: formatTableLabel(session.table),
+        previousAttendeeCount,
+        attendeeCount,
+      },
+    });
+
+    revalidatePath("/staff/tables");
+    revalidatePath(`/table/${session.publicToken}`);
+    await notifyFloorChanged("attendees-updated");
+
+    return {
+      message: `Updated party size to ${attendeeCount}.`,
+      status: "updated",
+    };
+  } catch (error) {
+    return {
+      message:
+        error instanceof Error
+          ? error.message
+          : "Could not update attendee count.",
+      status: "error",
+    };
+  }
+}
+
+export async function cancelTableSessionAction(
+  _previousState: FloorSessionControlState,
+  formData: FormData,
+): Promise<FloorSessionControlState> {
+  try {
+    const employee = await requireManagerFloorAction();
+    const tableSessionId = readPositiveInteger(formData, "tableSessionId");
+    const session = await prisma.tableSession.findUnique({
+      where: { id: tableSessionId },
+      include: {
+        table: true,
+        _count: {
+          select: {
+            checkouts: true,
+            items: true,
+            orders: true,
+            participants: true,
+          },
+        },
+      },
+    });
+
+    if (!session || session.status !== TableSessionStatus.OPEN) {
+      throw new Error("Only open table sessions can be cancelled.");
+    }
+
+    await prisma.$transaction([
+      prisma.tableSessionTransferRequest.updateMany({
+        where: {
+          tableSessionId: session.id,
+          status: TableSessionTransferStatus.PENDING,
+        },
+        data: {
+          reviewedByEmployeeId: employee.id,
+          status: TableSessionTransferStatus.CANCELLED,
+          respondedAt: new Date(),
+        },
+      }),
+      prisma.tableSession.update({
+        where: { id: session.id },
+        data: {
+          status: TableSessionStatus.CANCELLED,
+          closedAt: new Date(),
+        },
+      }),
+    ]);
+
+    await writeAuditEvent({
+      action: "TABLE_SESSION_CANCELLED",
+      employeeProfileId: employee.id,
+      entityType: "TableSession",
+      entityId: session.id,
+      metadata: {
+        publicToken: session.publicToken,
+        tableId: session.tableId,
+        tableLabel: formatTableLabel(session.table),
+        counts: session._count,
+      },
+    });
+
+    revalidatePath("/staff/tables");
+    revalidatePath(`/table/${session.publicToken}`);
+    await notifyFloorChanged("session-cancelled");
+
+    return {
+      message: `Cancelled session #${session.id}.`,
+      status: "cancelled",
+    };
+  } catch (error) {
+    return {
+      message:
+        error instanceof Error ? error.message : "Could not cancel session.",
+      status: "error",
+    };
+  }
 }
 
 // Staff request the move; a manager/owner tablet must approve or deny it.

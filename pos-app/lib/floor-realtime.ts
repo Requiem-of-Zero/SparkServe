@@ -4,9 +4,11 @@ const realtimeUrl =
   process.env.NEXT_PUBLIC_REALTIME_URL ?? "http://192.168.1.58:3001";
 
 export type FloorRefreshReason =
+  | "attendees-updated"
   | "cart-changed"
   | "owner-verified"
   | "participant-joined"
+  | "session-cancelled"
   | "session-security-updated"
   | "table-transfer-updated"
   | "kitchen-order-submitted";

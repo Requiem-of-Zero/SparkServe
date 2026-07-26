@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { RestaurantBrandLink } from "@/app/components/restaurant-brand-link";
+import { TableSessionFloorControls } from "@/app/staff/tables/table-session-floor-controls";
 import { TableSessionTransferForm } from "@/app/staff/tables/table-session-transfer-form";
 import { TableTransferApprovalForm } from "@/app/staff/tables/table-transfer-approval-form";
 import { TablesLiveClient } from "@/app/staff/tables/tables-live-client";
@@ -532,6 +533,13 @@ function TableStatusCard({
         <TableSessionTransferForm
           destinationTables={destinationTables}
           requiresApproval={!canTransferTables}
+          tableSessionId={session.id}
+        />
+      ) : null}
+
+      {hasCustomerSession && canTransferTables ? (
+        <TableSessionFloorControls
+          attendeeCount={session.attendeeCount}
           tableSessionId={session.id}
         />
       ) : null}
