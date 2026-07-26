@@ -27,7 +27,7 @@ const footerColumns = [
     heading: "Support",
     links: [
       { href: "/customer/login", label: "Member login" },
-      { href: "/owner/login", label: "Owner portal" },
+      { href: "/login", label: "Staff login" },
       { href: "/", label: "Contact" },
     ],
   },

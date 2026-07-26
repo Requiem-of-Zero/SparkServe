@@ -113,10 +113,10 @@ export default async function Home() {
                     Member
                   </Link>
                   <Link
-                    href="/owner/login"
+                    href="/login"
                     className="rounded-md border border-orange-200/25 px-3 py-2 hover:bg-orange-100/10"
                   >
-                    Owner
+                    Staff
                   </Link>
                 </>
               )}
