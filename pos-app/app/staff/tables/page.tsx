@@ -1,13 +1,18 @@
 import Link from "next/link";
 
 import { RestaurantBrandLink } from "@/app/components/restaurant-brand-link";
+import { TableSessionTransferForm } from "@/app/staff/tables/table-session-transfer-form";
+import { TableTransferApprovalForm } from "@/app/staff/tables/table-transfer-approval-form";
+import { TablesLiveClient } from "@/app/staff/tables/tables-live-client";
 import { requireActiveEmployee } from "@/lib/employee-auth";
 import {
   OrderStatus,
   TableSessionStatus,
+  TableSessionTransferStatus,
 } from "@/lib/generated/prisma/enums";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { canManageFloorActions } from "@/lib/staff-floor-actions";
 import {
   getTableFloorStatus,
   getTableFloorStatusLabel,
@@ -27,6 +32,19 @@ type FloorTable = Prisma.DiningTableGetPayload<{
   };
 }>;
 
+type PendingTransferRequest = Prisma.TableSessionTransferRequestGetPayload<{
+  include: {
+    fromTable: true;
+    requestedByEmployee: {
+      include: {
+        user: true;
+      };
+    };
+    tableSession: true;
+    toTable: true;
+  };
+}>;
+
 const unpaidOrderStatuses = new Set<OrderStatus>([
   OrderStatus.PENDING_OWNER_APPROVAL,
   OrderStatus.APPROVED,
@@ -43,7 +61,11 @@ const statusStyles: Record<TableFloorStatus, string> = {
   WAITING_FOR_PAYMENT: "border-rose-400/40 bg-rose-950/25 text-rose-200",
 };
 
-function formatTableLabel(table: FloorTable) {
+function formatTableLabel(table: {
+  col: number;
+  label: string | null;
+  row: string;
+}) {
   return table.label ?? `${table.row}${table.col}`;
 }
 
@@ -65,6 +87,14 @@ function formatShortDateTime(date: Date) {
     hour: "numeric",
     minute: "2-digit",
   }).format(date);
+}
+
+function formatEmployeeName(employee: PendingTransferRequest["requestedByEmployee"]) {
+  const structuredName = [employee.firstName, employee.lastName]
+    .filter(Boolean)
+    .join(" ");
+
+  return structuredName || employee.user.displayUsername || employee.user.name;
 }
 
 function getOpenSession(table: FloorTable) {
@@ -100,12 +130,17 @@ function summarizeTable(table: FloorTable) {
   const status = getTableFloorStatus({
     hasOpenSession: Boolean(session),
     openCartQuantity,
+    participantCount: participants.length,
     orderStatuses: session?.orders.map((order) => order.status) ?? [],
     checkoutStatuses:
       session?.checkouts.map((checkout) => checkout.status) ?? [],
   });
 
   return {
+    id: table.id,
+    isOverCapacity: Boolean(
+      session?.attendeeCount && participants.length > session.attendeeCount,
+    ),
     label: formatTableLabel(table),
     latestJoin,
     openCartQuantity,
@@ -121,9 +156,10 @@ function summarizeTable(table: FloorTable) {
 }
 
 export default async function StaffTablesPage() {
-  await requireActiveEmployee();
+  const employee = await requireActiveEmployee();
 
-  const [restaurant, tables] = await Promise.all([
+  const canTransferTables = canManageFloorActions(employee.role);
+  const [restaurant, tables, pendingTransferRequests] = await Promise.all([
     prisma.restaurantSettings.findUnique({ where: { id: 1 } }),
     prisma.diningTable.findMany({
       where: {
@@ -148,6 +184,26 @@ export default async function StaffTablesPage() {
       },
       orderBy: [{ row: "asc" }, { col: "asc" }],
     }),
+    canTransferTables
+      ? prisma.tableSessionTransferRequest.findMany({
+          where: {
+            status: TableSessionTransferStatus.PENDING,
+          },
+          include: {
+            fromTable: true,
+            requestedByEmployee: {
+              include: {
+                user: true,
+              },
+            },
+            tableSession: true,
+            toTable: true,
+          },
+          orderBy: {
+            createdAt: "asc",
+          },
+        })
+      : Promise.resolve([]),
   ]);
   const restaurantName = restaurant?.name ?? "Restaurant";
   const tableSummaries = tables.map(summarizeTable);
@@ -184,6 +240,7 @@ export default async function StaffTablesPage() {
               Watch active table sessions, cart activity, kitchen progress, and
               unpaid totals from one dining room screen.
             </p>
+            <TablesLiveClient />
           </div>
           <div className="flex flex-wrap gap-2">
             <Link
@@ -215,6 +272,12 @@ export default async function StaffTablesPage() {
           <FloorMetric label="Open unpaid" value={formatPrice(unpaidTotalCents)} />
         </section>
 
+        {canTransferTables ? (
+          <PendingTransferRequestsPanel
+            transferRequests={pendingTransferRequests}
+          />
+        ) : null}
+
         <section className="mt-8">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
@@ -231,6 +294,8 @@ export default async function StaffTablesPage() {
             {tableSummaries.map((table) => (
               <TableStatusCard
                 key={table.session?.id ?? table.label}
+                canTransferTables={canTransferTables}
+                tableSummaries={tableSummaries}
                 table={table}
               />
             ))}
@@ -238,6 +303,65 @@ export default async function StaffTablesPage() {
         </section>
       </section>
     </main>
+  );
+}
+
+function PendingTransferRequestsPanel({
+  transferRequests,
+}: {
+  transferRequests: PendingTransferRequest[];
+}) {
+  return (
+    <section className="mt-8 rounded-lg border border-[#ffd166]/25 bg-amber-950/20 p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#ffd166]">
+            Manager approvals
+          </p>
+          <h2 className="mt-2 text-xl font-bold">Table move requests</h2>
+        </div>
+        <span className="rounded-full border border-[#ffd166]/40 px-3 py-1 text-sm text-[#ffd166]">
+          {transferRequests.length} pending
+        </span>
+      </div>
+
+      {transferRequests.length === 0 ? (
+        <p className="mt-4 text-sm text-zinc-400">
+          No table move requests are waiting for approval.
+        </p>
+      ) : (
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          {transferRequests.map((transferRequest) => (
+            <article
+              key={transferRequest.id}
+              className="rounded-md border border-orange-200/10 bg-[#100b0b] p-4"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs text-zinc-500">
+                    Request #{transferRequest.id}
+                  </p>
+                  <h3 className="mt-1 text-lg font-semibold">
+                    {formatTableLabel(transferRequest.fromTable)} to{" "}
+                    {formatTableLabel(transferRequest.toTable)}
+                  </h3>
+                  <p className="mt-1 text-sm text-zinc-400">
+                    Session #{transferRequest.tableSessionId} requested by{" "}
+                    {formatEmployeeName(transferRequest.requestedByEmployee)}
+                  </p>
+                </div>
+                <span className="rounded border border-[#ffd166]/40 px-2 py-1 text-xs text-[#ffd166]">
+                  {formatTime(transferRequest.createdAt)}
+                </span>
+              </div>
+              <TableTransferApprovalForm
+                transferRequestId={transferRequest.id}
+              />
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -266,11 +390,32 @@ function StatusLegend() {
 }
 
 function TableStatusCard({
+  canTransferTables,
+  tableSummaries,
   table,
 }: {
+  canTransferTables: boolean;
+  tableSummaries: ReturnType<typeof summarizeTable>[];
   table: ReturnType<typeof summarizeTable>;
 }) {
   const session = table.session;
+  const hasCustomerSession = Boolean(session && table.status !== "AVAILABLE");
+  const destinationTables = tableSummaries.map((destinationTable) => {
+    const isCurrentTable = destinationTable.id === table.id;
+    const isAvailable = destinationTable.status === "AVAILABLE";
+
+    return {
+      disabledReason: isCurrentTable
+        ? "current table"
+        : isAvailable
+          ? undefined
+          : "occupied",
+      id: destinationTable.id,
+      isAvailable: isAvailable && !isCurrentTable,
+      label: destinationTable.label,
+      statusLabel: getTableFloorStatusLabel(destinationTable.status),
+    };
+  });
 
   return (
     <article className="rounded-lg border border-orange-200/10 bg-[#1a0f0b] p-5 shadow-lg shadow-black/20">
@@ -302,11 +447,20 @@ function TableStatusCard({
         <TableFact label="Orders" value={table.submittedOrderCount} />
       </div>
 
+      {table.isOverCapacity ? (
+        <p className="mt-3 rounded-md border border-amber-500/40 bg-amber-950/30 px-3 py-2 text-xs text-amber-200">
+          This session is over the attendee limit. New devices will be blocked
+          until staff updates the party size or removes stale participants.
+        </p>
+      ) : null}
+
       <div className="mt-5 rounded-md border border-orange-200/10 bg-[#100b0b] p-3">
         {session ? (
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-3 text-sm">
-              <span className="text-zinc-400">Session</span>
+              <span className="text-zinc-400">
+                {hasCustomerSession ? "Session" : "QR placeholder"}
+              </span>
               <span className="font-semibold text-zinc-100">#{session.id}</span>
             </div>
             <div className="flex items-center justify-between gap-3 text-sm">
@@ -357,7 +511,7 @@ function TableStatusCard({
         </div>
       ) : null}
 
-      {session ? (
+      {hasCustomerSession ? (
         <div className="mt-4 flex flex-wrap gap-2">
           <Link
             href={`/table/${session.publicToken}`}
@@ -372,6 +526,14 @@ function TableStatusCard({
             View kitchen
           </Link>
         </div>
+      ) : null}
+
+      {hasCustomerSession ? (
+        <TableSessionTransferForm
+          destinationTables={destinationTables}
+          requiresApproval={!canTransferTables}
+          tableSessionId={session.id}
+        />
       ) : null}
     </article>
   );

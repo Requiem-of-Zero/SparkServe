@@ -20,6 +20,7 @@ describe("getTableFloorStatus", () => {
       getTableFloorStatus({
         hasOpenSession: true,
         openCartQuantity: 2,
+        participantCount: 1,
         orderStatuses: [OrderStatus.SENT_TO_KITCHEN],
         checkoutStatuses: [CheckoutStatus.PENDING],
       }),
@@ -31,6 +32,7 @@ describe("getTableFloorStatus", () => {
       getTableFloorStatus({
         hasOpenSession: true,
         openCartQuantity: 0,
+        participantCount: 1,
         orderStatuses: [OrderStatus.READY_FOR_CHECKOUT],
         checkoutStatuses: [],
       }),
@@ -42,6 +44,7 @@ describe("getTableFloorStatus", () => {
       getTableFloorStatus({
         hasOpenSession: true,
         openCartQuantity: 0,
+        participantCount: 1,
         orderStatuses: [OrderStatus.SENT_TO_KITCHEN],
         checkoutStatuses: [],
       }),
@@ -53,6 +56,7 @@ describe("getTableFloorStatus", () => {
       getTableFloorStatus({
         hasOpenSession: true,
         openCartQuantity: 3,
+        participantCount: 1,
         orderStatuses: [],
         checkoutStatuses: [],
       }),
@@ -64,9 +68,22 @@ describe("getTableFloorStatus", () => {
       getTableFloorStatus({
         hasOpenSession: true,
         openCartQuantity: 0,
+        participantCount: 1,
         orderStatuses: [],
         checkoutStatuses: [],
       }),
     ).toBe("OCCUPIED");
+  });
+
+  it("treats empty pre-opened QR sessions as available", () => {
+    expect(
+      getTableFloorStatus({
+        hasOpenSession: true,
+        openCartQuantity: 0,
+        participantCount: 0,
+        orderStatuses: [],
+        checkoutStatuses: [],
+      }),
+    ).toBe("AVAILABLE");
   });
 });

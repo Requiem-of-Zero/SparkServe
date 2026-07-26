@@ -728,8 +728,9 @@ Status: 🟡 In progress
 - ✅ Added `/staff/tables` as the first staff floor view.
 - ✅ Shows active tables, current table status, guests, cart quantity, submitted order count, and unpaid totals.
 - ✅ Links occupied tables back to the active table session and kitchen queue.
+- ✅ Added staff-requested table-session transfer with manager/owner accept-deny approval and audit logging.
 - 🟡 Next: add realtime refresh events for table/cart/order/payment changes.
-- 🟡 Next: add manager-code-protected floor actions such as cancel session, close table, void order, and payment override.
+- 🟡 Next: add manager-code confirmation for sensitive floor actions such as cancel session, close table, void order, and payment override.
 - ⬜ Later: owner-configured drag/drop floor layout after `/owner/settings` table configuration exists.
 
 ### 🟡 16. Owner Menu And Restaurant Settings

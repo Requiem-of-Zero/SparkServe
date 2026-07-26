@@ -11,6 +11,7 @@ export type TableFloorStatus =
 export type TableFloorStatusInput = {
   hasOpenSession: boolean;
   openCartQuantity: number;
+  participantCount?: number;
   orderStatuses: OrderStatus[];
   checkoutStatuses: CheckoutStatus[];
 };
@@ -26,9 +27,16 @@ export function getTableFloorStatus({
   checkoutStatuses,
   hasOpenSession,
   openCartQuantity,
+  participantCount = 0,
   orderStatuses,
 }: TableFloorStatusInput): TableFloorStatus {
-  if (!hasOpenSession) {
+  if (
+    !hasOpenSession ||
+    (participantCount === 0 &&
+      openCartQuantity === 0 &&
+      orderStatuses.length === 0 &&
+      checkoutStatuses.length === 0)
+  ) {
     return "AVAILABLE";
   }
 
