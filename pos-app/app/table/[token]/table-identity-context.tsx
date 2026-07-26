@@ -30,6 +30,16 @@ const TableIdentityContext = createContext<TableIdentityContextValue | null>(
   null,
 );
 
+// Create the device participant id before the first socket join so duplicate
+// first-load joins on mobile Safari still resolve to one table guest.
+function createClientParticipantPublicId() {
+  if (window.crypto?.randomUUID) {
+    return window.crypto.randomUUID();
+  }
+
+  return `guest-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
 // Holds the current table participant identity for all client components on the
 // ordering page. The participant public id is separate from the signed-in user.
 export function TableIdentityProvider({
@@ -77,18 +87,25 @@ export function TableIdentityProvider({
         isSignedIn &&
         fallbackParticipantPublicId &&
         fallbackParticipantRole === "OWNER";
+      const nextParticipantPublicId =
+        shouldUseFallbackParticipant
+          ? fallbackParticipantPublicId
+          : savedParticipantPublicId ??
+            fallbackParticipantPublicId ??
+            createClientParticipantPublicId();
 
       if (savedDisplayName && !isSignedIn) {
         setDisplayName(savedDisplayName);
       }
 
-      if (savedParticipantPublicId || fallbackParticipantPublicId) {
-        setParticipantPublicId(
-          shouldUseFallbackParticipant
-            ? fallbackParticipantPublicId
-            : savedParticipantPublicId ?? fallbackParticipantPublicId ?? undefined,
+      if (!savedParticipantPublicId && !shouldUseFallbackParticipant) {
+        window.localStorage.setItem(
+          `${storageKey}:participantPublicId`,
+          nextParticipantPublicId,
         );
       }
+
+      setParticipantPublicId(nextParticipantPublicId);
 
       if (savedParticipantRole || fallbackParticipantRole) {
         setParticipantRole(

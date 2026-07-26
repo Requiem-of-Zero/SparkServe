@@ -6,6 +6,7 @@ import { auth } from "../lib/auth";
 import { TableSessionParticipantRole } from "../lib/generated/prisma/enums";
 import { prisma } from "../lib/prisma";
 import {
+  canCreateTableParticipant,
   resolveParticipantIdentity,
   type ParticipantIdentity,
 } from "../lib/table-participant-identity";
@@ -46,6 +47,22 @@ function getSafeUserId(value: unknown) {
   }
 
   return userId.slice(0, 128);
+}
+
+// Participant public ids may be created by the browser before first join so
+// duplicate first-load socket joins still map to the same guest row.
+function getSafeParticipantPublicId(value: unknown) {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const publicId = value.trim();
+
+  if (!/^[A-Za-z0-9_-]{12,80}$/.test(publicId)) {
+    return undefined;
+  }
+
+  return publicId;
 }
 
 // Socket.IO exposes raw handshake headers; Better Auth expects a Headers object.
@@ -113,11 +130,13 @@ async function createTableSessionParticipant({
   tableSessionId,
   displayNameBase,
   isGuest,
+  preferredPublicId,
   userId,
 }: {
   tableSessionId: number;
   displayNameBase: string;
   isGuest: boolean;
+  preferredPublicId?: string;
   userId?: string;
 }) {
   const existingParticipantCount = await prisma.tableSessionParticipant.count({
@@ -131,15 +150,34 @@ async function createTableSessionParticipant({
     ? await assignTableGuestName(tableSessionId, displayNameBase)
     : displayNameBase;
 
-  return prisma.tableSessionParticipant.create({
-    data: {
-      tableSessionId,
-      userId,
-      publicId: await createUniqueParticipantPublicId(),
-      displayName,
-      role,
-    },
-  });
+  const publicId = preferredPublicId ?? await createUniqueParticipantPublicId();
+
+  try {
+    return await prisma.tableSessionParticipant.create({
+      data: {
+        tableSessionId,
+        userId,
+        publicId,
+        displayName,
+        role,
+      },
+    });
+  } catch (error) {
+    if (!preferredPublicId) {
+      throw error;
+    }
+
+    const existingParticipant =
+      await prisma.tableSessionParticipant.findUnique({
+        where: { publicId: preferredPublicId },
+      });
+
+    if (existingParticipant?.tableSessionId === tableSessionId) {
+      return existingParticipant;
+    }
+
+    throw error;
+  }
 }
 
 // The realtime payloads use the translated menu name for notifications.
@@ -291,6 +329,24 @@ async function resolveRemovableIngredientIds({
 io.on("connection", (socket) => {
   console.log("socket connected", socket.id);
 
+  function notifyFloor(reason: string) {
+    io.to("floor").emit("floor:refresh", { reason });
+  }
+
+  socket.on("floor:join", () => {
+    socket.join("floor");
+    socket.emit("floor:joined");
+    console.log(`${socket.id} joined floor view`);
+  });
+
+  socket.on(
+    "floor:notify",
+    ({ reason }: { reason?: string } = {}) => {
+      // This is an invalidation event; staff floor clients refresh from Postgres.
+      notifyFloor(typeof reason === "string" ? reason : "floor-updated");
+    },
+  );
+
   socket.on("kitchen:join", () => {
     socket.join("kitchen");
     socket.emit("kitchen:joined");
@@ -349,6 +405,8 @@ io.on("connection", (socket) => {
         session.table.label ?? `${session.table.row}${session.table.col}`;
       const safeGuestName = getSafeGuestName(guestName);
       const safeAccountDisplayName = getSafeGuestName(rawAccountDisplayName);
+      const safeParticipantPublicId =
+        getSafeParticipantPublicId(participantPublicId);
       const socketUser = await getSocketUser(socket);
       const safeUserId = getSafeUserId(socketUser?.id);
       const accountDisplayName =
@@ -364,7 +422,7 @@ io.on("connection", (socket) => {
         tableLabel,
         accountDisplayName,
         signedInUserId: safeUserId,
-        savedParticipantPublicId: getSafeGuestName(participantPublicId),
+        savedParticipantPublicId: safeParticipantPublicId,
         existingParticipants: existingParticipants.map((participant) => ({
           id: participant.id,
           publicId: participant.publicId,
@@ -375,6 +433,20 @@ io.on("connection", (socket) => {
         })),
       });
 
+      if (
+        identityDecision.action === "create" &&
+        !canCreateTableParticipant({
+          attendeeCount: session.attendeeCount,
+          existingParticipantCount: existingParticipants.length,
+        })
+      ) {
+        socket.emit("cart:error", {
+          message:
+            "This table session is at its attendee limit. Ask the owner or staff to update the party size.",
+        });
+        return;
+      }
+
       const participant =
         identityDecision.action === "create"
           ? await createTableSessionParticipant({
@@ -384,6 +456,7 @@ io.on("connection", (socket) => {
                   ? safeGuestName
                   : identityDecision.displayNameBase,
               isGuest: Boolean(isGuest) && identityDecision.isGuest,
+              preferredPublicId: safeParticipantPublicId,
               userId: identityDecision.userId,
             })
           : identityDecision.action === "attach-account-to-device"
@@ -430,6 +503,7 @@ io.on("connection", (socket) => {
       socket.to(room).emit("table:participant-joined", {
         guestName: participant.displayName,
       });
+      notifyFloor("participant-joined");
 
       console.log(`${participant.displayName} joined ${room}`);
     },
@@ -551,6 +625,7 @@ io.on("connection", (socket) => {
           });
         }
 
+        notifyFloor("cart-changed");
         ack?.({ ok: true });
       } catch (error) {
         console.error("cart:add-item failed", error);
@@ -628,6 +703,7 @@ io.on("connection", (socket) => {
           name: getMenuItemDisplayName(item),
           guestName: getSafeGuestName(guestName),
         });
+        notifyFloor("cart-changed");
         ack?.({ ok: true });
       } catch (error) {
         console.error("cart:increment-item failed", error);
@@ -715,6 +791,7 @@ io.on("connection", (socket) => {
             name: getMenuItemDisplayName(item),
             guestName: getSafeGuestName(guestName),
           });
+          notifyFloor("cart-changed");
           ack?.({ ok: true });
           return;
         }
@@ -729,6 +806,7 @@ io.on("connection", (socket) => {
           name: getMenuItemDisplayName(existingItem),
           guestName: getSafeGuestName(guestName),
         });
+        notifyFloor("cart-changed");
         ack?.({ ok: true });
       } catch (error) {
         console.error("cart:decrement-item failed", error);
@@ -750,6 +828,7 @@ io.on("connection", (socket) => {
     }
 
     io.to(`table-session:${token}`).emit("table:owner-verified");
+    notifyFloor("owner-verified");
   });
 
   socket.on("table:owner-claimed", ({ token }: { token?: string }) => {
@@ -761,6 +840,7 @@ io.on("connection", (socket) => {
     }
 
     io.to(`table-session:${token}`).emit("table:owner-claimed");
+    notifyFloor("participant-joined");
   });
 
   socket.on(
@@ -776,6 +856,7 @@ io.on("connection", (socket) => {
       io.to(`table-session:${token}`).emit(
         "table:ownership-transfer-requested",
       );
+      notifyFloor("participant-joined");
     },
   );
 
@@ -792,6 +873,7 @@ io.on("connection", (socket) => {
       io.to(`table-session:${token}`).emit(
         "table:ownership-transfer-responded",
       );
+      notifyFloor("participant-joined");
     },
   );
 

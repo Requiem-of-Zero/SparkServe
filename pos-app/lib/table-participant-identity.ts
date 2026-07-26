@@ -52,7 +52,17 @@ export type ResolveParticipantIdentityResult =
       action: "restore-guest-name";
       participant: ParticipantIdentity;
       displayName: string;
-    };
+  };
+
+export function canCreateTableParticipant({
+  attendeeCount,
+  existingParticipantCount,
+}: {
+  attendeeCount?: number | null;
+  existingParticipantCount: number;
+}) {
+  return !attendeeCount || existingParticipantCount < attendeeCount;
+}
 
 function getGuestDisplayName({
   participant,

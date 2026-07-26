@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  canCreateTableParticipant,
   resolveParticipantIdentity,
   type ParticipantIdentity,
 } from "./table-participant-identity";
@@ -23,6 +24,31 @@ function participant(
 }
 
 describe("resolveParticipantIdentity", () => {
+  it("allows new table participants before the owner sets attendee count", () => {
+    expect(
+      canCreateTableParticipant({
+        attendeeCount: null,
+        existingParticipantCount: 4,
+      }),
+    ).toBe(true);
+  });
+
+  it("allows new table participants until the attendee count is reached", () => {
+    expect(
+      canCreateTableParticipant({
+        attendeeCount: 4,
+        existingParticipantCount: 3,
+      }),
+    ).toBe(true);
+
+    expect(
+      canCreateTableParticipant({
+        attendeeCount: 4,
+        existingParticipantCount: 4,
+      }),
+    ).toBe(false);
+  });
+
   it("creates the first QR guest as the table session owner", () => {
     const result = resolveParticipantIdentity({
       tableSessionId,
