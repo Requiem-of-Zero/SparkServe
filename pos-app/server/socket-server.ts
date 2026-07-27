@@ -30,10 +30,39 @@ const allowedOrigins = Array.from(
       .filter(Boolean),
   ),
 );
+const allowedOriginSet = new Set(allowedOrigins);
+
+function isAllowedSocketOrigin(origin: string | undefined) {
+  if (!origin) {
+    return true;
+  }
+
+  if (allowedOriginSet.has(origin)) {
+    return true;
+  }
+
+  // Vercel creates preview/prod domains dynamically. Allowing Vercel-hosted
+  // SparkServe builds keeps realtime usable across redeploys without manually
+  // editing Railway env vars for every preview URL.
+  try {
+    const host = new URL(origin).hostname;
+    return host === "vercel.app" || host.endsWith(".vercel.app");
+  } catch {
+    return false;
+  }
+}
 
 const io = new Server(port, {
   cors: {
-    origin: allowedOrigins,
+    origin(origin, callback) {
+      if (isAllowedSocketOrigin(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      console.warn(`Blocked realtime CORS origin: ${origin}`);
+      callback(null, false);
+    },
     credentials: true,
   },
 });
