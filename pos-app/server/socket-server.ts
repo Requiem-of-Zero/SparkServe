@@ -56,13 +56,14 @@ const io = new Server(port, {
   cors: {
     origin(origin, callback) {
       if (isAllowedSocketOrigin(origin)) {
-        callback(null, true);
+        callback(null, origin ?? true);
         return;
       }
 
       console.warn(`Blocked realtime CORS origin: ${origin}`);
       callback(null, false);
     },
+    methods: ["GET", "POST"],
     credentials: true,
   },
 });
