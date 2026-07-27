@@ -13,9 +13,23 @@ import {
 import { canTableAcceptOrders } from "../lib/table-owner-verification";
 
 const port = Number(process.env.PORT ?? 3001);
-const allowedOrigins = process.env.REALTIME_ALLOWED_ORIGINS
-  ? process.env.REALTIME_ALLOWED_ORIGINS.split(",").map((origin) => origin.trim())
-  : ["http://localhost:3000", "http://192.168.1.58:3000"];
+
+// Realtime traffic comes from the browser, so Railway must explicitly allow the
+// deployed Vercel origin. Better Auth already stores trusted web origins, so the
+// socket server accepts either the realtime-specific list or the auth list.
+const allowedOrigins = Array.from(
+  new Set(
+    [
+      process.env.REALTIME_ALLOWED_ORIGINS,
+      process.env.BETTER_AUTH_TRUSTED_ORIGINS,
+      "http://localhost:3000",
+      "http://192.168.1.58:3000",
+    ]
+      .flatMap((value) => value?.split(",") ?? [])
+      .map((origin) => origin.trim())
+      .filter(Boolean),
+  ),
+);
 
 const io = new Server(port, {
   cors: {
@@ -23,6 +37,8 @@ const io = new Server(port, {
     credentials: true,
   },
 });
+
+console.log(`Realtime CORS origins: ${allowedOrigins.join(", ")}`);
 
 // Sanitize any client-provided display value before it touches logs or the DB.
 function getSafeGuestName(value: unknown) {

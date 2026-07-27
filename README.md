@@ -145,7 +145,7 @@ return prisma.tableSessionParticipant.create({
 });
 ```
 
-Source: `pos-app/server/table-sessions-server.ts`
+Source: `pos-app/server/socket-server.ts`
 
 ### Per-Order Verification Is Optional Per Table
 
