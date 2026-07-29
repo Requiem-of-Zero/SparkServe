@@ -12,7 +12,12 @@ import {
 } from "../lib/table-participant-identity";
 import { canTableAcceptOrders } from "../lib/table-owner-verification";
 
-const port = Number(process.env.PORT ?? 3001);
+const isRailwayRuntime = Boolean(
+  process.env.RAILWAY_ENVIRONMENT_ID || process.env.RAILWAY_SERVICE_ID,
+);
+const port = Number(
+  process.env.SOCKET_PORT ?? (isRailwayRuntime ? process.env.PORT : undefined) ?? 3001,
+);
 
 // Realtime traffic comes from the browser, so Railway must explicitly allow the
 // deployed Vercel origin. Better Auth already stores trusted web origins, so the
@@ -117,7 +122,9 @@ function getSafeParticipantPublicId(value: unknown) {
 }
 
 // Socket.IO exposes raw handshake headers; Better Auth expects a Headers object.
-function getSocketHeaders(headers: Record<string, string | string[] | undefined>) {
+function getSocketHeaders(
+  headers: Record<string, string | string[] | undefined>,
+) {
   const socketHeaders = new Headers();
 
   for (const [key, value] of Object.entries(headers)) {
@@ -164,9 +171,11 @@ function createParticipantPublicId() {
 async function createUniqueParticipantPublicId() {
   for (let attempts = 0; attempts < 20; attempts += 1) {
     const publicId = createParticipantPublicId();
-    const existingParticipant = await prisma.tableSessionParticipant.findUnique({
-      where: { publicId },
-    });
+    const existingParticipant = await prisma.tableSessionParticipant.findUnique(
+      {
+        where: { publicId },
+      },
+    );
 
     if (!existingParticipant) {
       return publicId;
@@ -201,7 +210,8 @@ async function createTableSessionParticipant({
     ? await assignTableGuestName(tableSessionId, displayNameBase)
     : displayNameBase;
 
-  const publicId = preferredPublicId ?? await createUniqueParticipantPublicId();
+  const publicId =
+    preferredPublicId ?? (await createUniqueParticipantPublicId());
 
   try {
     return await prisma.tableSessionParticipant.create({
@@ -218,10 +228,11 @@ async function createTableSessionParticipant({
       throw error;
     }
 
-    const existingParticipant =
-      await prisma.tableSessionParticipant.findUnique({
+    const existingParticipant = await prisma.tableSessionParticipant.findUnique(
+      {
         where: { publicId: preferredPublicId },
-      });
+      },
+    );
 
     if (existingParticipant?.tableSessionId === tableSessionId) {
       return existingParticipant;
@@ -316,7 +327,11 @@ function getSafeNote(value: unknown) {
   return note ? note.slice(0, 160) : null;
 }
 
-const allowedSpiceNotes = new Set(["Spice: Mild", "Spice: Medium", "Spice: Hot"]);
+const allowedSpiceNotes = new Set([
+  "Spice: Mild",
+  "Spice: Medium",
+  "Spice: Hot",
+]);
 
 async function resolveStructuredKitchenNote({
   menuItemId,
@@ -390,13 +405,10 @@ io.on("connection", (socket) => {
     console.log(`${socket.id} joined floor view`);
   });
 
-  socket.on(
-    "floor:notify",
-    ({ reason }: { reason?: string } = {}) => {
-      // This is an invalidation event; staff floor clients refresh from Postgres.
-      notifyFloor(typeof reason === "string" ? reason : "floor-updated");
-    },
-  );
+  socket.on("floor:notify", ({ reason }: { reason?: string } = {}) => {
+    // This is an invalidation event; staff floor clients refresh from Postgres.
+    notifyFloor(typeof reason === "string" ? reason : "floor-updated");
+  });
 
   socket.on("kitchen:join", () => {
     socket.join("kitchen");
@@ -404,16 +416,13 @@ io.on("connection", (socket) => {
     console.log(`${socket.id} joined kitchen queue`);
   });
 
-  socket.on(
-    "kitchen:notify",
-    ({ reason }: { reason?: string } = {}) => {
-      // This is an invalidation event, not source-of-truth order data.
-      // Kitchen browsers refresh their server page and re-read Postgres.
-      io.to("kitchen").emit("kitchen:refresh", {
-        reason: typeof reason === "string" ? reason : "queue-updated",
-      });
-    },
-  );
+  socket.on("kitchen:notify", ({ reason }: { reason?: string } = {}) => {
+    // This is an invalidation event, not source-of-truth order data.
+    // Kitchen browsers refresh their server page and re-read Postgres.
+    io.to("kitchen").emit("kitchen:refresh", {
+      reason: typeof reason === "string" ? reason : "queue-updated",
+    });
+  });
 
   socket.on(
     "table:join",
@@ -464,10 +473,11 @@ io.on("connection", (socket) => {
         getSafeGuestName(socketUser?.name) ??
         getSafeGuestName(socketUser?.email) ??
         safeAccountDisplayName;
-      const existingParticipants = await prisma.tableSessionParticipant.findMany({
-        where: { tableSessionId: session.id },
-        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-      });
+      const existingParticipants =
+        await prisma.tableSessionParticipant.findMany({
+          where: { tableSessionId: session.id },
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        });
       const identityDecision = resolveParticipantIdentity({
         tableSessionId: session.id,
         tableLabel,
@@ -536,10 +546,10 @@ io.on("connection", (socket) => {
                       where: { id: identityDecision.participant.id },
                       data: { displayName: identityDecision.displayName },
                     })
-                : existingParticipants.find(
-                    (participant) =>
-                      participant.id === identityDecision.participant.id,
-                  ) ?? identityDecision.participant;
+                  : (existingParticipants.find(
+                      (participant) =>
+                        participant.id === identityDecision.participant.id,
+                    ) ?? identityDecision.participant);
 
       socket.join(room);
 
