@@ -10,6 +10,10 @@ import {
   TableSessionStatus,
   TableSessionTransferStatus,
 } from "@/lib/generated/prisma/enums";
+import {
+  getApprovalEmployeeDisplayName,
+  requireManagerApprovalCode,
+} from "@/lib/manager-approval";
 import { prisma } from "@/lib/prisma";
 import { canManageFloorActions } from "@/lib/staff-floor-actions";
 
@@ -41,6 +45,32 @@ async function requireManagerFloorAction() {
   }
 
   return employee;
+}
+
+async function getFloorActionApprover({
+  employee,
+  formData,
+}: {
+  employee: Awaited<ReturnType<typeof requireActiveEmployee>>;
+  formData: FormData;
+}) {
+  if (canManageFloorActions(employee.role)) {
+    return {
+      approvedBy: employee.user.displayUsername || employee.user.name,
+      approvedByEmployeeProfileId: employee.id,
+      approvalMode: "active-session",
+      approvalRole: employee.role,
+    };
+  }
+
+  const approvingEmployee = await requireManagerApprovalCode(formData);
+
+  return {
+    approvedBy: getApprovalEmployeeDisplayName(approvingEmployee),
+    approvedByEmployeeProfileId: approvingEmployee.id,
+    approvalMode: "manager-code",
+    approvalRole: approvingEmployee.role,
+  };
 }
 
 function formatTableLabel(table: {
@@ -111,6 +141,7 @@ export async function updateTableSessionAttendeeCountAction(
 ): Promise<FloorSessionControlState> {
   try {
     const employee = await requireManagerFloorAction();
+    const approval = await getFloorActionApprover({ employee, formData });
     const tableSessionId = readPositiveInteger(formData, "tableSessionId");
     const attendeeCount = readAttendeeCount(formData);
     const session = await prisma.tableSession.findUnique({
@@ -140,6 +171,7 @@ export async function updateTableSessionAttendeeCountAction(
         tableLabel: formatTableLabel(session.table),
         previousAttendeeCount,
         attendeeCount,
+        ...approval,
       },
     });
 
@@ -168,6 +200,7 @@ export async function cancelTableSessionAction(
 ): Promise<FloorSessionControlState> {
   try {
     const employee = await requireManagerFloorAction();
+    const approval = await getFloorActionApprover({ employee, formData });
     const tableSessionId = readPositiveInteger(formData, "tableSessionId");
     const session = await prisma.tableSession.findUnique({
       where: { id: tableSessionId },
@@ -219,6 +252,7 @@ export async function cancelTableSessionAction(
         tableId: session.tableId,
         tableLabel: formatTableLabel(session.table),
         counts: session._count,
+        ...approval,
       },
     });
 
@@ -393,6 +427,7 @@ export async function respondToTableSessionTransferAction(
       throw new Error("Only managers and owners can approve table transfers.");
     }
 
+    const approval = await getFloorActionApprover({ employee, formData });
     const transferRequestId = readPositiveInteger(formData, "transferRequestId");
     const decision = formData.get("decision");
 
@@ -437,6 +472,7 @@ export async function respondToTableSessionTransferAction(
           fromTableLabel: formatTableLabel(transferRequest.fromTable),
           toTableId: transferRequest.toTableId,
           toTableLabel: formatTableLabel(transferRequest.toTable),
+          ...approval,
         },
       });
 
@@ -496,6 +532,7 @@ export async function respondToTableSessionTransferAction(
         toTableLabel: formatTableLabel(destinationTable),
         cancelledEmptyDestinationSessionId: destinationOpenSession?.id,
         cancelledEmptyDestinationToken: destinationOpenSession?.publicToken,
+        ...approval,
       },
     });
 

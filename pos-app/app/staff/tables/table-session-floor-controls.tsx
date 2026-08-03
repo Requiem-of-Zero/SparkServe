@@ -17,9 +17,11 @@ const initialState: FloorSessionControlState = {
 // table session while keeping an audit trail of the action.
 export function TableSessionFloorControls({
   attendeeCount,
+  requiresManagerCode = false,
   tableSessionId,
 }: {
   attendeeCount?: number | null;
+  requiresManagerCode?: boolean;
   tableSessionId: number;
 }) {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -59,6 +61,12 @@ export function TableSessionFloorControls({
           />
           <AttendeeSubmitButton />
         </div>
+        {requiresManagerCode ? (
+          <ManagerCodeInput
+            id={`managerApprovalCode-attendees-${tableSessionId}`}
+            label="Manager code"
+          />
+        ) : null}
         {attendeeState.message ? (
           <p
             className={`text-xs ${
@@ -116,7 +124,7 @@ export function TableSessionFloorControls({
             <div className="mt-4 flex flex-col gap-2 sm:flex-row">
               <form
                 action={cancelAction}
-                className="flex-1"
+                className="flex-1 space-y-3"
                 onSubmit={() => setShowCancelConfirm(false)}
               >
                 <input
@@ -124,6 +132,12 @@ export function TableSessionFloorControls({
                   name="tableSessionId"
                   value={tableSessionId}
                 />
+                {requiresManagerCode ? (
+                  <ManagerCodeInput
+                    id={`managerApprovalCode-cancel-${tableSessionId}`}
+                    label="Manager code"
+                  />
+                ) : null}
                 <CancelSubmitButton />
               </form>
               <button
@@ -138,6 +152,25 @@ export function TableSessionFloorControls({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function ManagerCodeInput({ id, label }: { id: string; label: string }) {
+  return (
+    <label htmlFor={id} className="block text-xs text-zinc-400">
+      {label}
+      <input
+        id={id}
+        name="managerApprovalCode"
+        type="password"
+        inputMode="numeric"
+        pattern="[0-9]{6}"
+        autoComplete="off"
+        placeholder="6-digit code"
+        className="mt-1 w-full rounded-md border border-orange-200/20 bg-[#090706] px-3 py-2 text-sm text-zinc-100"
+        required
+      />
+    </label>
   );
 }
 
