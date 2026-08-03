@@ -574,6 +574,7 @@ Status: 🟡 In progress
 - Takeout Stripe checkout is connected.
 - Dine-in customer self-checkout has been removed from the table QR flow to keep payment staff-assisted.
 - Dine-in table guests can ping the staff floor tablet when they are ready for checkout.
+- Staff can record an in-person dine-in payment and close the table session.
 - Webhook handling exists.
 - Stripe Terminal/staff card reader flow is future work for dine-in.
 - Final order closing and receipt/reporting polish are still needed.
