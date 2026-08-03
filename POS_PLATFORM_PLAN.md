@@ -733,9 +733,11 @@ Status: 🟡 In progress
 - ✅ QR table sessions show the current session owner and whether order PIN verification is enabled.
 - ✅ Table joins now respect the owner-confirmed attendee count and block new devices after the party is full.
 - ✅ Added manager/owner floor controls for adjusting attendee count and cancelling bad table sessions with audit logging.
-- 🟡 Next: add manager-code confirmation before sensitive floor actions execute.
+- ✅ Sensitive floor actions now require an active manager/owner session; manager-code escalation is reserved for future cashier/shared-terminal override flows.
+- ✅ Added a touch-friendly live floor map for dragging whole table sessions between available tables.
 - 🟡 Next: add explicit staff controls for clearing stale participants and closing completed sessions.
 - 🟡 Next: add void order and payment override actions after staff orders dashboard exists.
+- 🔮 Later: individual guest/seat moves as a split/merge workflow so people, cart lines, orders, owner approval, and payment responsibility stay consistent.
 - ⬜ Later: owner-configured drag/drop floor layout after `/owner/settings` table configuration exists.
 
 ### 🟡 16. Owner Menu And Restaurant Settings
