@@ -14,7 +14,7 @@ import { TableOwnerSetupPanel } from "./table-owner-setup-panel";
 import { TableOrderSecurityPanel } from "./table-order-security-panel";
 import { TableSessionItemQuantityControls } from "./table-session-item-quantity-controls";
 import { SubmitCartToKitchenButton } from "./submit-cart-to-kitchen-button";
-import { CheckoutButton } from "./checkout-button";
+import { NotifyWaiterCheckoutButton } from "./notify-waiter-checkout-button";
 
 type TableSessionPageProps = {
   params: Promise<{
@@ -338,7 +338,7 @@ export default async function TableSessionPage({
                     </ul>
                   </div>
                 ))}
-                <CheckoutButton token={token} />
+                <NotifyWaiterCheckoutButton token={token} />
               </div>
             )}
           </div>
