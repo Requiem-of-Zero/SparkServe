@@ -3,10 +3,17 @@
 import { revalidatePath } from "next/cache";
 
 import { writeAuditEvent } from "@/lib/audit-log";
+import { calculateCheckoutTotals } from "@/lib/checkout";
 import { requireActiveEmployee } from "@/lib/employee-auth";
 import { notifyFloorChanged } from "@/lib/floor-realtime";
-import { readPositiveInteger } from "@/lib/form-data";
+import { readPositiveInteger, readRequiredString } from "@/lib/form-data";
 import {
+  CheckoutStatus,
+  OrderStatus,
+  PaymentMethod,
+  PaymentProvider,
+  PaymentStatus,
+  PaymentTransactionType,
   TableSessionStatus,
   TableSessionTransferStatus,
 } from "@/lib/generated/prisma/enums";
@@ -16,6 +23,7 @@ import {
 } from "@/lib/manager-approval";
 import { prisma } from "@/lib/prisma";
 import { canManageFloorActions } from "@/lib/staff-floor-actions";
+import { notifyTableSessionChanged } from "@/lib/table-session-realtime";
 
 export type TransferTableSessionState = {
   message?: string;
@@ -27,6 +35,17 @@ export type FloorSessionControlState = {
   status: "idle" | "updated" | "cancelled" | "error";
 };
 
+export type StaffCheckoutState = {
+  checkoutId?: number;
+  message?: string;
+  status: "idle" | "paid" | "error";
+};
+
+const staffCheckoutOrderStatuses = [
+  OrderStatus.SENT_TO_KITCHEN,
+  OrderStatus.READY_FOR_CHECKOUT,
+];
+
 function readAttendeeCount(formData: FormData) {
   const attendeeCount = Number(formData.get("attendeeCount"));
 
@@ -35,6 +54,21 @@ function readAttendeeCount(formData: FormData) {
   }
 
   return attendeeCount;
+}
+
+function readStaffPaymentMethod(formData: FormData) {
+  const method = readRequiredString(formData, "paymentMethod");
+
+  switch (method) {
+    case "card":
+      return PaymentMethod.STAFF_TERMINAL_CARD;
+    case "cash":
+      return PaymentMethod.CASH;
+    case "comp":
+      return PaymentMethod.MANUAL_COMP;
+    default:
+      throw new Error("Choose a supported payment method.");
+  }
 }
 
 async function requireManagerFloorAction() {
@@ -268,6 +302,179 @@ export async function cancelTableSessionAction(
     return {
       message:
         error instanceof Error ? error.message : "Could not cancel session.",
+      status: "error",
+    };
+  }
+}
+
+// Staff-assisted closeout records the in-person payment and closes the dining visit.
+export async function closeTableSessionWithPaymentAction(
+  _previousState: StaffCheckoutState,
+  formData: FormData,
+): Promise<StaffCheckoutState> {
+  try {
+    const employee = await requireActiveEmployee();
+    const tableSessionId = readPositiveInteger(formData, "tableSessionId");
+    const paymentMethod = readStaffPaymentMethod(formData);
+    const paidAt = new Date();
+    const restaurantSettings = await prisma.restaurantSettings.findUnique({
+      where: { id: 1 },
+      select: { currency: true },
+    });
+    const session = await prisma.tableSession.findUnique({
+      where: { id: tableSessionId },
+      include: {
+        orders: {
+          where: {
+            paidAt: null,
+            cancelledAt: null,
+            status: {
+              in: staffCheckoutOrderStatuses,
+            },
+          },
+          orderBy: { submittedAt: "asc" },
+        },
+        table: true,
+      },
+    });
+
+    if (!session || session.status !== TableSessionStatus.OPEN) {
+      throw new Error("Only open table sessions can be checked out.");
+    }
+
+    if (session.orders.length === 0) {
+      throw new Error("No unpaid kitchen orders are ready for checkout.");
+    }
+
+    const totals = calculateCheckoutTotals({
+      orders: session.orders.map((order) => ({
+        subtotalCents: order.subtotalCents,
+        taxCents: order.taxCents,
+        tipCents: order.tipCents,
+        totalCents: order.totalCents,
+      })),
+      platformFeeBasisPoints: 0,
+    });
+    const orderIds = session.orders.map((order) => order.id);
+    const checkout = await prisma.$transaction(async (tx) => {
+      await tx.checkout.updateMany({
+        where: {
+          tableSessionId: session.id,
+          status: CheckoutStatus.PENDING,
+        },
+        data: {
+          status: CheckoutStatus.CANCELLED,
+          cancelledAt: paidAt,
+        },
+      });
+
+      const createdCheckout = await tx.checkout.create({
+        data: {
+          tableSessionId: session.id,
+          status: CheckoutStatus.PAID,
+          currency: restaurantSettings?.currency?.toLowerCase() ?? "usd",
+          subtotalCents: totals.subtotalCents,
+          taxCents: totals.taxCents,
+          tipCents: totals.tipCents,
+          totalCents: totals.totalCents,
+          platformFeeCents: totals.platformFeeCents,
+          paidAt,
+          orders: {
+            connect: orderIds.map((id) => ({ id })),
+          },
+        },
+      });
+
+      await tx.payment.create({
+        data: {
+          checkoutId: createdCheckout.id,
+          status: PaymentStatus.PAID,
+          method: paymentMethod,
+          provider: PaymentProvider.NONE,
+          transactionType: PaymentTransactionType.DINE_IN,
+          amountCents: totals.totalCents,
+          platformFeeCents: totals.platformFeeCents,
+          paidAt,
+        },
+      });
+
+      await tx.order.updateMany({
+        where: {
+          id: {
+            in: orderIds,
+          },
+        },
+        data: {
+          checkedOutByEmployeeId: employee.id,
+          paidAt,
+          status: OrderStatus.PAID,
+        },
+      });
+
+      await tx.tableSessionTransferRequest.updateMany({
+        where: {
+          tableSessionId: session.id,
+          status: TableSessionTransferStatus.PENDING,
+        },
+        data: {
+          reviewedByEmployeeId: employee.id,
+          status: TableSessionTransferStatus.CANCELLED,
+          respondedAt: paidAt,
+        },
+      });
+
+      await tx.tableSession.update({
+        where: { id: session.id },
+        data: {
+          closedAt: paidAt,
+          status: TableSessionStatus.CHECKED_OUT,
+        },
+      });
+
+      return createdCheckout;
+    });
+
+    await writeAuditEvent({
+      action: "TABLE_SESSION_CHECKED_OUT",
+      employeeProfileId: employee.id,
+      entityType: "Checkout",
+      entityId: checkout.id,
+      metadata: {
+        tableSessionId: session.id,
+        publicToken: session.publicToken,
+        tableId: session.tableId,
+        tableLabel: formatTableLabel(session.table),
+        orderIds,
+        paymentMethod,
+        subtotalCents: totals.subtotalCents,
+        taxCents: totals.taxCents,
+        tipCents: totals.tipCents,
+        totalCents: totals.totalCents,
+      },
+    });
+
+    revalidatePath("/staff/tables");
+    revalidatePath(`/table/${session.publicToken}`);
+    await notifyFloorChanged("session-checked-out");
+    await notifyTableSessionChanged({
+      message: "A waiter closed this table session. Thank you.",
+      reason: "session-checked-out",
+      token: session.publicToken,
+    });
+
+    return {
+      checkoutId: checkout.id,
+      message: `Closed ${formatTableLabel(session.table)} for $${(
+        totals.totalCents / 100
+      ).toFixed(2)}.`,
+      status: "paid",
+    };
+  } catch (error) {
+    return {
+      message:
+        error instanceof Error
+          ? error.message
+          : "Could not close table session.",
       status: "error",
     };
   }
