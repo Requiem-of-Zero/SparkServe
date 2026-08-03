@@ -1,7 +1,24 @@
 import type { Server, Socket } from "socket.io";
 
+export type FloorCheckoutRequestPayload = {
+  orderCount: number;
+  requestedAt: string;
+  requestedBy: string;
+  tableLabel: string;
+  tableSessionId: number;
+  token: string;
+  unpaidTotalCents: number;
+};
+
 export function notifyFloor(io: Server, reason: string) {
   io.to("floor").emit("floor:refresh", { reason });
+}
+
+export function notifyFloorCheckoutRequested(
+  io: Server,
+  payload: FloorCheckoutRequestPayload,
+) {
+  io.to("floor").emit("floor:checkout-requested", payload);
 }
 
 export function registerFloorHandlers({

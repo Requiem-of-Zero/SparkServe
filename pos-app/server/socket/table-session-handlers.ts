@@ -1,4 +1,5 @@
 import type { Server, Socket } from "socket.io";
+import { OrderStatus } from "../../lib/generated/prisma/enums";
 import { prisma } from "../../lib/prisma";
 import {
   canCreateTableParticipant,
@@ -6,7 +7,7 @@ import {
   type ParticipantIdentity,
 } from "../../lib/table-participant-identity";
 import { getSocketUser } from "./auth";
-import { notifyFloor } from "./floor-handlers";
+import { notifyFloor, notifyFloorCheckoutRequested } from "./floor-handlers";
 import {
   getSafeGuestName,
   getSafeParticipantPublicId,
@@ -27,6 +28,23 @@ type TableSessionHandlerContext = {
   io: Server;
   socket: Socket;
 };
+
+type CheckoutRequestAck = (
+  response:
+    | {
+        ok: true;
+        message: string;
+      }
+    | {
+        ok: false;
+        message: string;
+      },
+) => void;
+
+const checkoutRequestOrderStatuses = [
+  OrderStatus.SENT_TO_KITCHEN,
+  OrderStatus.READY_FOR_CHECKOUT,
+];
 
 // Registers table-session presence, shared cart, owner verification, and ownership-transfer events.
 export function registerTableSessionHandlers({
@@ -544,6 +562,132 @@ export function registerTableSessionHandlers({
         "table:ownership-transfer-responded",
       );
       notifyFloor(io, "participant-joined");
+    },
+  );
+
+  socket.on(
+    "table:checkout-requested",
+    async (
+      {
+        token,
+        participantPublicId,
+      }: {
+        token?: unknown;
+        participantPublicId?: unknown;
+      },
+      ack?: CheckoutRequestAck,
+    ) => {
+      if (typeof token !== "string" || !token) {
+        ack?.({ ok: false, message: "Invalid table session." });
+        socket.emit("cart:error", {
+          message: "Invalid table session.",
+        });
+        return;
+      }
+
+      const safeParticipantPublicId =
+        getSafeParticipantPublicId(participantPublicId);
+
+      if (!safeParticipantPublicId) {
+        ack?.({ ok: false, message: "Join this table before requesting checkout." });
+        socket.emit("cart:error", {
+          message: "Join this table before requesting checkout.",
+        });
+        return;
+      }
+
+      try {
+        const session = await prisma.tableSession.findUnique({
+          where: { publicToken: token },
+          include: {
+            orders: {
+              where: {
+                paidAt: null,
+                cancelledAt: null,
+                status: {
+                  in: checkoutRequestOrderStatuses,
+                },
+              },
+              select: {
+                totalCents: true,
+              },
+            },
+            table: true,
+          },
+        });
+
+        if (!session || session.status !== "OPEN") {
+          ack?.({ ok: false, message: "Table session is not open." });
+          socket.emit("cart:error", {
+            message: "Table session is not open.",
+          });
+          return;
+        }
+
+        const participant = await prisma.tableSessionParticipant.findUnique({
+          where: { publicId: safeParticipantPublicId },
+          select: {
+            displayName: true,
+            tableSessionId: true,
+          },
+        });
+
+        if (!participant || participant.tableSessionId !== session.id) {
+          ack?.({
+            ok: false,
+            message: "Join this table before requesting checkout.",
+          });
+          socket.emit("cart:error", {
+            message: "Join this table before requesting checkout.",
+          });
+          return;
+        }
+
+        if (session.orders.length === 0) {
+          ack?.({
+            ok: false,
+            message: "Send an order to the kitchen before requesting checkout.",
+          });
+          socket.emit("cart:error", {
+            message: "Send an order to the kitchen before requesting checkout.",
+          });
+          return;
+        }
+
+        const tableLabel =
+          session.table.label ?? `${session.table.row}${session.table.col}`;
+        const unpaidTotalCents = session.orders.reduce(
+          (sum, order) => sum + order.totalCents,
+          0,
+        );
+        const requestedAt = new Date().toISOString();
+
+        notifyFloorCheckoutRequested(io, {
+          orderCount: session.orders.length,
+          requestedAt,
+          requestedBy: participant.displayName,
+          tableLabel,
+          tableSessionId: session.id,
+          token,
+          unpaidTotalCents,
+        });
+
+        io.to(`table-session:${token}`).emit("table:checkout-requested", {
+          requestedBy: participant.displayName,
+          tableLabel,
+        });
+
+        ack?.({
+          ok: true,
+          message: "A waiter has been notified for checkout.",
+        });
+      } catch (error) {
+        console.error("Could not request table checkout", error);
+        ack?.({
+          ok: false,
+          message: "Could not notify a waiter for checkout.",
+        });
+      }
     },
   );
 }
