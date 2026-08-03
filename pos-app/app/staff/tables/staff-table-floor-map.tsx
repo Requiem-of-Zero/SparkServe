@@ -1,21 +1,37 @@
 "use client";
 
-import { useActionState, useMemo, useState, useTransition } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  useActionState,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
 
 import {
   requestTableSessionTransferAction,
   type TransferTableSessionState,
 } from "@/app/staff/tables/actions";
+import { TableSessionFloorControls } from "@/app/staff/tables/table-session-floor-controls";
 import type { TableFloorStatus } from "@/lib/table-floor";
 
 type FloorMapTable = {
   attendeeCount: number | null;
   col: number;
   id: number;
+  isOverCapacity: boolean;
   label: string;
   openCartQuantity: number;
   ownerName: string | null;
   participantCount: number;
+  participants: {
+    displayName: string;
+    id: number;
+    role: string;
+  }[];
+  publicToken: string | null;
   row: string;
   seats: number;
   sessionId: number | null;
@@ -28,6 +44,8 @@ type FloorMapTable = {
 const initialState: TransferTableSessionState = {
   status: "idle",
 };
+
+type FloorMapMode = "move-session" | "seat-guests";
 
 const statusStyles: Record<TableFloorStatus, string> = {
   AVAILABLE: "border-emerald-400/40 bg-emerald-950/25 text-emerald-100",
@@ -69,6 +87,10 @@ function getCanDropSession({
   );
 }
 
+function hasActiveCustomerSession(table: FloorMapTable) {
+  return Boolean(table.sessionId && table.status !== "AVAILABLE");
+}
+
 // Touch-friendly floor map for moving an active session between physical tables.
 export function StaffTableFloorMap({
   canManageFloorActions,
@@ -77,6 +99,7 @@ export function StaffTableFloorMap({
   canManageFloorActions: boolean;
   tables: FloorMapTable[];
 }) {
+  const router = useRouter();
   const [state, formAction] = useActionState(
     requestTableSessionTransferAction,
     initialState,
@@ -88,6 +111,8 @@ export function StaffTableFloorMap({
   const [selectedSessionId, setSelectedSessionId] = useState<number | null>(
     null,
   );
+  const [mode, setMode] = useState<FloorMapMode>("move-session");
+  const isSessionMoveMode = mode === "move-session";
   const rows = useMemo(() => {
     return Array.from(groupTablesByRow(tables).entries()).map(
       ([rowLabel, rowTables]) => ({
@@ -100,6 +125,12 @@ export function StaffTableFloorMap({
   const selectedTable = tables.find(
     (table) => table.id === selectedSourceTableId,
   );
+
+  useEffect(() => {
+    if (state.status === "approved" || state.status === "requested") {
+      router.refresh();
+    }
+  }, [router, state.status]);
 
   function submitMove(destinationTableId: number) {
     if (!selectedSessionId) {
@@ -118,7 +149,11 @@ export function StaffTableFloorMap({
   }
 
   function selectTable(table: FloorMapTable) {
-    if (table.sessionId) {
+    if (!isSessionMoveMode) {
+      return;
+    }
+
+    if (hasActiveCustomerSession(table)) {
       setSelectedSourceTableId(table.id);
       setSelectedSessionId(table.sessionId);
       return;
@@ -136,7 +171,7 @@ export function StaffTableFloorMap({
   }
 
   function beginDrag(table: FloorMapTable) {
-    if (!table.sessionId) {
+    if (!isSessionMoveMode || !hasActiveCustomerSession(table)) {
       return;
     }
 
@@ -151,28 +186,66 @@ export function StaffTableFloorMap({
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#ff6a1a]">
             Live floor map
           </p>
-          <h3 className="mt-1 text-lg font-semibold">
-            Drag a session to move tables
-          </h3>
+          <h3 className="mt-1 text-lg font-semibold">Floor actions</h3>
           <p className="mt-1 max-w-2xl text-sm text-zinc-400">
-            Drag an occupied table, or tap it once on iPad and tap an available
-            destination. The same audited move/request action is used
-            underneath.
+            Move a whole table session today. Guest-level seat moves are a
+            later split/merge workflow because cart, owner approval, orders, and
+            checkout are session-owned.
           </p>
         </div>
-        <div className="rounded-md border border-orange-200/10 bg-[#0b0706] px-3 py-2 text-sm text-zinc-300">
-          {selectedTable ? (
-            <>
-              Moving{" "}
-              <span className="font-semibold text-[#ffd166]">
-                {selectedTable.label}
-              </span>
-            </>
-          ) : (
-            "Select occupied table"
-          )}
+        <div className="flex flex-col items-stretch gap-2 sm:items-end">
+          <div className="grid grid-cols-2 rounded-md border border-orange-200/10 bg-[#0b0706] p-1 text-sm">
+            <button
+              type="button"
+              onClick={() => setMode("move-session")}
+              className={`rounded px-3 py-2 font-semibold ${
+                mode === "move-session"
+                  ? "bg-[#ff6a1a] text-[#160b08]"
+                  : "text-zinc-300 hover:bg-orange-100/10"
+              }`}
+            >
+              Move session
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode("seat-guests");
+                setSelectedSourceTableId(null);
+                setSelectedSessionId(null);
+              }}
+              className={`rounded px-3 py-2 font-semibold ${
+                mode === "seat-guests"
+                  ? "bg-[#ff6a1a] text-[#160b08]"
+                  : "text-zinc-300 hover:bg-orange-100/10"
+              }`}
+            >
+              Seat guests
+            </button>
+          </div>
+          <div className="rounded-md border border-orange-200/10 bg-[#0b0706] px-3 py-2 text-sm text-zinc-300">
+            {selectedTable ? (
+              <>
+                Moving{" "}
+                <span className="font-semibold text-[#ffd166]">
+                  {selectedTable.label}
+                </span>
+              </>
+            ) : isSessionMoveMode ? (
+              "Select occupied table"
+            ) : (
+              "Guest moves planned"
+            )}
+          </div>
         </div>
       </div>
+
+      {mode === "seat-guests" ? (
+        <p className="mt-3 rounded-md border border-[#ffd166]/30 bg-amber-950/25 px-3 py-2 text-sm text-amber-100">
+          Guest-level moves need split/merge rules so individual people, their
+          items, and payment responsibility do not detach from the table session
+          by accident.
+        </p>
+      ) : null}
 
       {state.message ? (
         <p
@@ -210,100 +283,26 @@ export function StaffTableFloorMap({
                 });
 
                 return (
-                  <button
+                  <FloorMapTableCard
                     key={table.id}
-                    type="button"
-                    draggable={Boolean(table.sessionId)}
-                    onClick={() => selectTable(table)}
-                    onDragStart={(event) => {
-                      beginDrag(table);
-                      event.dataTransfer.effectAllowed = "move";
-                      event.dataTransfer.setData(
-                        "text/plain",
-                        String(table.sessionId ?? ""),
-                      );
-                    }}
-                    onDragOver={(event) => {
-                      if (canDrop) {
-                        event.preventDefault();
-                        event.dataTransfer.dropEffect = "move";
-                      }
-                    }}
-                    onDrop={(event) => {
-                      event.preventDefault();
-                      if (canDrop) {
-                        submitMove(table.id);
-                      }
-                    }}
-                    onDragEnd={() => {
+                    canDrop={canDrop}
+                    canManageFloorActions={canManageFloorActions}
+                    isPending={isPending}
+                    isSelected={isSelected}
+                    isSessionMoveMode={isSessionMoveMode}
+                    mode={mode}
+                    onBeginDrag={beginDrag}
+                    onDropSession={submitMove}
+                    onSelectTable={selectTable}
+                    onUnselect={() => {
                       if (!isPending) {
                         setSelectedSourceTableId(null);
                         setSelectedSessionId(null);
                       }
                     }}
-                    className={`min-h-36 rounded-md border p-3 text-left transition ${
-                      statusStyles[table.status]
-                    } ${
-                      isSelected
-                        ? "ring-2 ring-[#ffd166] ring-offset-2 ring-offset-[#140c09]"
-                        : ""
-                    } ${
-                      canDrop
-                        ? "scale-[1.02] border-[#ffd166] bg-[#2a170c] shadow-lg shadow-amber-950/30"
-                        : ""
-                    } ${
-                      table.sessionId
-                        ? "cursor-grab active:cursor-grabbing"
-                        : selectedSessionId
-                          ? "cursor-pointer"
-                          : "cursor-default"
-                    } disabled:cursor-wait disabled:opacity-70`}
-                    disabled={isPending}
-                    style={{ gridColumn: table.col }}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="text-xs uppercase tracking-[0.18em] opacity-70">
-                          Table
-                        </p>
-                        <p className="mt-1 text-xl font-bold">{table.label}</p>
-                      </div>
-                      <span className="rounded-full border border-current/25 px-2 py-1 text-[0.65rem] font-semibold">
-                        {table.statusLabel}
-                      </span>
-                    </div>
-
-                    <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                      <span className="rounded border border-current/15 bg-black/15 px-2 py-1">
-                        Seats {table.seats}
-                      </span>
-                      <span className="rounded border border-current/15 bg-black/15 px-2 py-1">
-                        Joined{" "}
-                        {table.attendeeCount
-                          ? `${table.participantCount}/${table.attendeeCount}`
-                          : table.participantCount}
-                      </span>
-                      <span className="rounded border border-current/15 bg-black/15 px-2 py-1">
-                        Cart {table.openCartQuantity}
-                      </span>
-                      <span className="rounded border border-current/15 bg-black/15 px-2 py-1">
-                        Orders {table.submittedOrderCount}
-                      </span>
-                    </div>
-
-                    <div className="mt-3 flex items-center justify-between gap-3 border-t border-current/15 pt-2 text-xs">
-                      <span className="truncate opacity-80">
-                        {table.ownerName
-                          ? `Owner: ${table.ownerName}`
-                          : table.sessionId
-                            ? "No owner joined"
-                            : "No active session"}
-                      </span>
-                      <span className="font-semibold">
-                        {formatPrice(table.unpaidTotalCents)}
-                      </span>
-                    </div>
-                  </button>
+                    selectedSessionId={selectedSessionId}
+                    table={table}
+                  />
                 );
               })}
             </div>
@@ -317,5 +316,179 @@ export function StaffTableFloorMap({
           : "Staff drops create a manager approval request."}
       </p>
     </section>
+  );
+}
+
+function FloorMapTableCard({
+  canDrop,
+  canManageFloorActions,
+  isPending,
+  isSelected,
+  isSessionMoveMode,
+  mode,
+  onBeginDrag,
+  onDropSession,
+  onSelectTable,
+  onUnselect,
+  selectedSessionId,
+  table,
+}: {
+  canDrop: boolean;
+  canManageFloorActions: boolean;
+  isPending: boolean;
+  isSelected: boolean;
+  isSessionMoveMode: boolean;
+  mode: FloorMapMode;
+  onBeginDrag: (table: FloorMapTable) => void;
+  onDropSession: (destinationTableId: number) => void;
+  onSelectTable: (table: FloorMapTable) => void;
+  onUnselect: () => void;
+  selectedSessionId: number | null;
+  table: FloorMapTable;
+}) {
+  const hasCustomerSession = hasActiveCustomerSession(table);
+
+  return (
+    <article
+      draggable={Boolean(isSessionMoveMode && hasCustomerSession)}
+      onDragStart={(event) => {
+        if (!isSessionMoveMode || !hasCustomerSession || isPending) {
+          event.preventDefault();
+          return;
+        }
+
+        onBeginDrag(table);
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", String(table.sessionId));
+      }}
+      onDragOver={(event) => {
+        if (isSessionMoveMode && canDrop && !isPending) {
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "move";
+        }
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        if (isSessionMoveMode && canDrop && !isPending) {
+          onDropSession(table.id);
+        }
+      }}
+      onDragEnd={onUnselect}
+      className={`rounded-md border p-3 text-left transition ${
+        statusStyles[table.status]
+      } ${
+        isSelected
+          ? "ring-2 ring-[#ffd166] ring-offset-2 ring-offset-[#140c09]"
+          : ""
+      } ${
+        canDrop
+          ? "scale-[1.02] border-[#ffd166] bg-[#2a170c] shadow-lg shadow-amber-950/30"
+          : ""
+      } ${
+        isSessionMoveMode && hasCustomerSession
+          ? "cursor-grab active:cursor-grabbing"
+          : isSessionMoveMode && selectedSessionId
+            ? "cursor-pointer"
+            : "cursor-default"
+      } ${isPending ? "opacity-70" : ""}`}
+      style={{ gridColumn: table.col }}
+    >
+      <button
+        type="button"
+        disabled={isPending}
+        onClick={() => onSelectTable(table)}
+        className="w-full text-left disabled:cursor-wait"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-xs uppercase tracking-[0.18em] opacity-70">
+              Table
+            </p>
+            <p className="mt-1 text-xl font-bold">{table.label}</p>
+          </div>
+          <span className="rounded-full border border-current/25 px-2 py-1 text-[0.65rem] font-semibold">
+            {table.statusLabel}
+          </span>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+          <span className="rounded border border-current/15 bg-black/15 px-2 py-1">
+            Seats {table.seats}
+          </span>
+          <span className="rounded border border-current/15 bg-black/15 px-2 py-1">
+            Joined{" "}
+            {table.attendeeCount
+              ? `${table.participantCount}/${table.attendeeCount}`
+              : table.participantCount}
+          </span>
+          <span className="rounded border border-current/15 bg-black/15 px-2 py-1">
+            Cart {table.openCartQuantity}
+          </span>
+          <span className="rounded border border-current/15 bg-black/15 px-2 py-1">
+            Orders {table.submittedOrderCount}
+          </span>
+        </div>
+
+        <div className="mt-3 flex items-center justify-between gap-3 border-t border-current/15 pt-2 text-xs">
+          <span className="truncate opacity-80">
+            {table.ownerName
+              ? `Owner: ${table.ownerName}`
+              : hasCustomerSession
+                ? "No owner joined"
+                : "No active session"}
+          </span>
+          <span className="font-semibold">
+            {formatPrice(table.unpaidTotalCents)}
+          </span>
+        </div>
+      </button>
+
+      {table.isOverCapacity ? (
+        <p className="mt-3 rounded-md border border-amber-500/40 bg-amber-950/30 px-3 py-2 text-xs text-amber-100">
+          Over party size. New devices are blocked until staff adjusts the
+          party size or clears stale participants.
+        </p>
+      ) : null}
+
+      {mode === "seat-guests" && table.participants.length > 0 ? (
+        <div className="mt-3 flex flex-wrap gap-1.5 border-t border-current/15 pt-2">
+          {table.participants.map((participant) => (
+            <span
+              key={participant.id}
+              className="rounded-full border border-current/20 bg-black/15 px-2 py-1 text-[0.65rem]"
+            >
+              {participant.displayName}
+              {participant.role === "OWNER" ? " owner" : ""}
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      {hasCustomerSession && table.publicToken ? (
+        <div className="mt-3 flex flex-wrap gap-2 border-t border-current/15 pt-3">
+          <Link
+            href={`/table/${table.publicToken}`}
+            className="rounded-md bg-[#ff6a1a] px-3 py-2 text-xs font-semibold text-[#160b08] hover:bg-[#ffd166]"
+          >
+            Open table
+          </Link>
+          <Link
+            href="/staff/kitchen"
+            className="rounded-md border border-current/20 px-3 py-2 text-xs font-semibold hover:bg-black/15"
+          >
+            Kitchen
+          </Link>
+        </div>
+      ) : null}
+
+      {hasCustomerSession && table.sessionId && canManageFloorActions ? (
+        <div className="mt-3">
+          <TableSessionFloorControls
+            attendeeCount={table.attendeeCount}
+            tableSessionId={table.sessionId}
+          />
+        </div>
+      ) : null}
+    </article>
   );
 }

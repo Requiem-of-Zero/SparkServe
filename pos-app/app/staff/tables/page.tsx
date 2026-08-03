@@ -2,8 +2,6 @@ import Link from "next/link";
 
 import { RestaurantBrandLink } from "@/app/components/restaurant-brand-link";
 import { StaffTableFloorMap } from "@/app/staff/tables/staff-table-floor-map";
-import { TableSessionFloorControls } from "@/app/staff/tables/table-session-floor-controls";
-import { TableSessionTransferForm } from "@/app/staff/tables/table-session-transfer-form";
 import { TableTransferApprovalForm } from "@/app/staff/tables/table-transfer-approval-form";
 import { TablesLiveClient } from "@/app/staff/tables/tables-live-client";
 import { requireActiveEmployee } from "@/lib/employee-auth";
@@ -77,15 +75,6 @@ function formatPrice(cents: number) {
 
 function formatTime(date: Date) {
   return new Intl.DateTimeFormat("en", {
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
-}
-
-function formatShortDateTime(date: Date) {
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
     hour: "numeric",
     minute: "2-digit",
   }).format(date);
@@ -230,12 +219,19 @@ export default async function StaffTablesPage() {
     attendeeCount: table.session?.attendeeCount ?? null,
     col: table.col,
     id: table.id,
+    isOverCapacity: table.isOverCapacity,
     label: table.label,
     openCartQuantity: table.openCartQuantity,
     ownerName:
       table.participants.find((participant) => participant.role === "OWNER")
         ?.displayName ?? null,
     participantCount: table.participantCount,
+    participants: table.participants.map((participant) => ({
+      displayName: participant.displayName,
+      id: participant.id,
+      role: participant.role,
+    })),
+    publicToken: table.session?.publicToken ?? null,
     row: table.row,
     seats: table.seats,
     sessionId: table.session?.id ?? null,
@@ -318,16 +314,6 @@ export default async function StaffTablesPage() {
             tables={floorMapTables}
           />
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {tableSummaries.map((table) => (
-              <TableStatusCard
-                key={table.session?.id ?? table.label}
-                canTransferTables={canTransferTables}
-                tableSummaries={tableSummaries}
-                table={table}
-              />
-            ))}
-          </div>
         </section>
       </section>
     </main>
@@ -413,178 +399,6 @@ function StatusLegend() {
           {getTableFloorStatusLabel(status)}
         </span>
       ))}
-    </div>
-  );
-}
-
-function TableStatusCard({
-  canTransferTables,
-  tableSummaries,
-  table,
-}: {
-  canTransferTables: boolean;
-  tableSummaries: ReturnType<typeof summarizeTable>[];
-  table: ReturnType<typeof summarizeTable>;
-}) {
-  const session = table.session;
-  const hasCustomerSession = Boolean(session && table.status !== "AVAILABLE");
-  const destinationTables = tableSummaries.map((destinationTable) => {
-    const isCurrentTable = destinationTable.id === table.id;
-    const isAvailable = destinationTable.status === "AVAILABLE";
-
-    return {
-      disabledReason: isCurrentTable
-        ? "current table"
-        : isAvailable
-          ? undefined
-          : "occupied",
-      id: destinationTable.id,
-      isAvailable: isAvailable && !isCurrentTable,
-      label: destinationTable.label,
-      statusLabel: getTableFloorStatusLabel(destinationTable.status),
-    };
-  });
-
-  return (
-    <article className="rounded-lg border border-orange-200/10 bg-[#1a0f0b] p-5 shadow-lg shadow-black/20">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-            Table
-          </p>
-          <h3 className="mt-1 text-2xl font-bold">{table.label}</h3>
-        </div>
-        <span
-          className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusStyles[table.status]}`}
-        >
-          {getTableFloorStatusLabel(table.status)}
-        </span>
-      </div>
-
-      <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
-        <TableFact label="Attendees" value={session?.attendeeCount ?? "Unset"} />
-        <TableFact
-          label="Joined"
-          value={
-            session?.attendeeCount
-              ? `${table.participantCount}/${session.attendeeCount}`
-              : table.participantCount
-          }
-        />
-        <TableFact label="Cart items" value={table.openCartQuantity} />
-        <TableFact label="Orders" value={table.submittedOrderCount} />
-      </div>
-
-      {table.isOverCapacity ? (
-        <p className="mt-3 rounded-md border border-amber-500/40 bg-amber-950/30 px-3 py-2 text-xs text-amber-200">
-          This session is over the attendee limit. New devices will be blocked
-          until staff updates the party size or removes stale participants.
-        </p>
-      ) : null}
-
-      <div className="mt-5 rounded-md border border-orange-200/10 bg-[#100b0b] p-3">
-        {session ? (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-3 text-sm">
-              <span className="text-zinc-400">
-                {hasCustomerSession ? "Session" : "QR placeholder"}
-              </span>
-              <span className="font-semibold text-zinc-100">#{session.id}</span>
-            </div>
-            <div className="flex items-center justify-between gap-3 text-sm">
-              <span className="text-zinc-400">Opened</span>
-              <span className="text-zinc-200">{formatTime(session.openedAt)}</span>
-            </div>
-            <div className="flex items-center justify-between gap-3 text-sm">
-              <span className="text-zinc-400">Latest join</span>
-              <span className="text-zinc-200">
-                {table.latestJoin ? formatTime(table.latestJoin) : "None"}
-              </span>
-            </div>
-            <div className="flex items-center justify-between gap-3 border-t border-orange-200/10 pt-2 text-sm">
-              <span className="text-zinc-400">Unpaid total</span>
-              <span className="font-semibold text-[#ffd166]">
-                {formatPrice(table.unpaidTotalCents)}
-              </span>
-            </div>
-          </div>
-        ) : (
-          <p className="mt-2 text-xs text-zinc-500">
-            No active QR session at this table.
-          </p>
-        )}
-      </div>
-
-      {table.participants.length > 0 ? (
-        <div className="mt-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-            Joined session
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {table.participants.map((participant) => (
-              <span
-                key={participant.id}
-                title={`Joined ${formatShortDateTime(participant.joinedAt)}`}
-                className={`rounded-full border px-2 py-1 text-xs ${
-                  participant.role === "OWNER"
-                    ? "border-[#ffd166]/40 bg-amber-950/30 text-[#ffd166]"
-                    : "border-orange-200/10 bg-[#100b0b] text-zinc-300"
-                }`}
-              >
-                {participant.displayName}
-                {participant.role === "OWNER" ? " owner" : ""}
-              </span>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      {hasCustomerSession ? (
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Link
-            href={`/table/${session.publicToken}`}
-            className="rounded-md bg-[#ff6a1a] px-3 py-2 text-sm font-semibold text-[#160b08] hover:bg-[#ffd166]"
-          >
-            Open table
-          </Link>
-          <Link
-            href="/staff/kitchen"
-            className="rounded-md border border-orange-200/20 px-3 py-2 text-sm text-zinc-200 hover:bg-orange-100/10"
-          >
-            View kitchen
-          </Link>
-        </div>
-      ) : null}
-
-      {hasCustomerSession ? (
-        <TableSessionTransferForm
-          destinationTables={destinationTables}
-          requiresApproval={!canTransferTables}
-          tableSessionId={session.id}
-        />
-      ) : null}
-
-      {hasCustomerSession && canTransferTables ? (
-        <TableSessionFloorControls
-          attendeeCount={session.attendeeCount}
-          tableSessionId={session.id}
-        />
-      ) : null}
-    </article>
-  );
-}
-
-function TableFact({
-  label,
-  value,
-}: {
-  label: string;
-  value: number | string;
-}) {
-  return (
-    <div className="rounded-md border border-orange-200/10 bg-[#100b0b] p-3">
-      <p className="text-xs text-zinc-500">{label}</p>
-      <p className="mt-1 font-semibold text-zinc-100">{value}</p>
     </div>
   );
 }
