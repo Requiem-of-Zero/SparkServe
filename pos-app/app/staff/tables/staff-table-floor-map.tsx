@@ -481,11 +481,14 @@ function FloorMapTableCard({
         </div>
       ) : null}
 
-      {hasCustomerSession && table.sessionId && canManageFloorActions ? (
+      {hasCustomerSession && table.sessionId ? (
         <div className="mt-3">
           <TableSessionFloorControls
             attendeeCount={table.attendeeCount}
+            canManageFloorActions={canManageFloorActions}
+            submittedOrderCount={table.submittedOrderCount}
             tableSessionId={table.sessionId}
+            unpaidTotalCents={table.unpaidTotalCents}
           />
         </div>
       ) : null}

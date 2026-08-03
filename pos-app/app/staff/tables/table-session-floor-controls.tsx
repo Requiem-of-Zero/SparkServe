@@ -1,11 +1,14 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import {
   cancelTableSessionAction,
+  closeTableSessionWithPaymentAction,
   type FloorSessionControlState,
+  type StaffCheckoutState,
   updateTableSessionAttendeeCountAction,
 } from "@/app/staff/tables/actions";
 
@@ -13,17 +16,32 @@ const initialState: FloorSessionControlState = {
   status: "idle",
 };
 
-// Manager/owner floor controls for correcting party size or cancelling a bad
-// table session while keeping an audit trail of the action.
+const checkoutInitialState: StaffCheckoutState = {
+  status: "idle",
+};
+
+function formatPrice(cents: number) {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
+// Per-table staff actions. Any active employee can close out payment; manager
+// controls are shown only to roles allowed to change the floor session itself.
 export function TableSessionFloorControls({
   attendeeCount,
+  canManageFloorActions,
   requiresManagerCode = false,
+  submittedOrderCount,
   tableSessionId,
+  unpaidTotalCents,
 }: {
   attendeeCount?: number | null;
+  canManageFloorActions: boolean;
   requiresManagerCode?: boolean;
+  submittedOrderCount: number;
   tableSessionId: number;
+  unpaidTotalCents: number;
 }) {
+  const router = useRouter();
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [attendeeState, attendeeAction] = useActionState(
     updateTableSessionAttendeeCountAction,
@@ -33,78 +51,140 @@ export function TableSessionFloorControls({
     cancelTableSessionAction,
     initialState,
   );
+  const [checkoutState, checkoutAction] = useActionState(
+    closeTableSessionWithPaymentAction,
+    checkoutInitialState,
+  );
+  const hasOrdersReadyForCloseout = submittedOrderCount > 0;
+
+  useEffect(() => {
+    if (checkoutState.status === "paid") {
+      router.refresh();
+    }
+  }, [checkoutState.status, router]);
 
   return (
     <div className="mt-4 rounded-md border border-orange-200/10 bg-[#100b0b] p-3">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-        Floor controls
+        Staff closeout
       </p>
 
-      <form action={attendeeAction} className="mt-3 space-y-2">
+      <form action={checkoutAction} className="mt-3 space-y-2">
         <input type="hidden" name="tableSessionId" value={tableSessionId} />
-        <label
-          htmlFor={`attendeeCount-${tableSessionId}`}
-          className="text-xs text-zinc-400"
-        >
-          Party size
-        </label>
-        <div className="flex gap-2">
-          <input
-            id={`attendeeCount-${tableSessionId}`}
-            name="attendeeCount"
-            type="number"
-            min={1}
-            max={99}
-            defaultValue={attendeeCount ?? 2}
-            className="min-w-0 flex-1 rounded-md border border-orange-200/20 bg-[#090706] px-3 py-2 text-sm text-zinc-100"
-            required
-          />
-          <AttendeeSubmitButton />
+        <div className="flex items-center justify-between gap-3 rounded-md border border-emerald-400/20 bg-emerald-950/20 px-3 py-2 text-sm">
+          <span className="text-zinc-300">Unpaid balance</span>
+          <span className="font-semibold text-emerald-100">
+            {formatPrice(unpaidTotalCents)}
+          </span>
         </div>
-        {requiresManagerCode ? (
-          <ManagerCodeInput
-            id={`managerApprovalCode-attendees-${tableSessionId}`}
-            label="Manager code"
-          />
-        ) : null}
-        {attendeeState.message ? (
+        <label
+          htmlFor={`paymentMethod-${tableSessionId}`}
+          className="block text-xs text-zinc-400"
+        >
+          Payment method
+          <select
+            id={`paymentMethod-${tableSessionId}`}
+            name="paymentMethod"
+            defaultValue="card"
+            className="mt-1 w-full rounded-md border border-orange-200/20 bg-[#090706] px-3 py-2 text-sm text-zinc-100"
+            disabled={!hasOrdersReadyForCloseout}
+          >
+            <option value="card">Card reader</option>
+            <option value="cash">Cash</option>
+            <option value="comp">Comped/manual close</option>
+          </select>
+        </label>
+        <CheckoutSubmitButton disabled={!hasOrdersReadyForCloseout} />
+        {checkoutState.message ? (
           <p
             className={`text-xs ${
-              attendeeState.status === "error"
+              checkoutState.status === "error"
                 ? "text-red-300"
                 : "text-emerald-300"
             }`}
           >
-            {attendeeState.message}
+            {checkoutState.message}
           </p>
         ) : null}
+        <p className="text-xs text-zinc-500">
+          Recording payment marks unpaid kitchen orders as paid, closes the QR
+          session, and writes an audit event.
+        </p>
       </form>
 
-      <div className="mt-3 border-t border-orange-200/10 pt-3">
-        <button
-          type="button"
-          onClick={() => setShowCancelConfirm(true)}
-          className="w-full rounded-md border border-red-500/40 px-3 py-2 text-sm font-semibold text-red-200 hover:bg-red-950/30"
-        >
-          Cancel session
-        </button>
-        <p className="mt-2 text-xs text-zinc-500">
-          Cancelling closes this live QR session and writes an audit event.
-        </p>
-        {cancelState.message ? (
-          <p
-            className={`mt-2 text-xs ${
-              cancelState.status === "error"
-                ? "text-red-300"
-                : "text-emerald-300"
-            }`}
-          >
-            {cancelState.message}
+      {canManageFloorActions ? (
+        <div className="mt-4 border-t border-orange-200/10 pt-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+            Manager controls
           </p>
-        ) : null}
-      </div>
 
-      {showCancelConfirm ? (
+          <form action={attendeeAction} className="mt-3 space-y-2">
+            <input type="hidden" name="tableSessionId" value={tableSessionId} />
+            <label
+              htmlFor={`attendeeCount-${tableSessionId}`}
+              className="text-xs text-zinc-400"
+            >
+              Party size
+            </label>
+            <div className="flex gap-2">
+              <input
+                id={`attendeeCount-${tableSessionId}`}
+                name="attendeeCount"
+                type="number"
+                min={1}
+                max={99}
+                defaultValue={attendeeCount ?? 2}
+                className="min-w-0 flex-1 rounded-md border border-orange-200/20 bg-[#090706] px-3 py-2 text-sm text-zinc-100"
+                required
+              />
+              <AttendeeSubmitButton />
+            </div>
+            {requiresManagerCode ? (
+              <ManagerCodeInput
+                id={`managerApprovalCode-attendees-${tableSessionId}`}
+                label="Manager code"
+              />
+            ) : null}
+            {attendeeState.message ? (
+              <p
+                className={`text-xs ${
+                  attendeeState.status === "error"
+                    ? "text-red-300"
+                    : "text-emerald-300"
+                }`}
+              >
+                {attendeeState.message}
+              </p>
+            ) : null}
+          </form>
+
+          <div className="mt-3 border-t border-orange-200/10 pt-3">
+            <button
+              type="button"
+              onClick={() => setShowCancelConfirm(true)}
+              className="w-full rounded-md border border-red-500/40 px-3 py-2 text-sm font-semibold text-red-200 hover:bg-red-950/30"
+            >
+              Cancel session
+            </button>
+            <p className="mt-2 text-xs text-zinc-500">
+              Cancelling closes this live QR session and writes an audit event.
+            </p>
+            {cancelState.message ? (
+              <p
+                className={`mt-2 text-xs ${
+                  cancelState.status === "error"
+                    ? "text-red-300"
+                    : "text-emerald-300"
+                }`}
+              >
+                {cancelState.message}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {showCancelConfirm && canManageFloorActions ? (
         <div
           aria-modal="true"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
@@ -171,6 +251,20 @@ function ManagerCodeInput({ id, label }: { id: string; label: string }) {
         required
       />
     </label>
+  );
+}
+
+function CheckoutSubmitButton({ disabled }: { disabled: boolean }) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending || disabled}
+      className="w-full rounded-md bg-emerald-500 px-3 py-2 text-sm font-semibold text-[#06120d] hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {pending ? "Closing..." : "Record payment and close"}
+    </button>
   );
 }
 
