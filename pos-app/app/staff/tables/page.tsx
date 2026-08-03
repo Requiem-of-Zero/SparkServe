@@ -149,6 +149,10 @@ function summarizeTable(table: FloorTable) {
   };
 }
 
+function hasActiveCustomerSession(table: ReturnType<typeof summarizeTable>) {
+  return Boolean(table.session && table.status !== "AVAILABLE");
+}
+
 export default async function StaffTablesPage() {
   const employee = await requireActiveEmployee();
 
@@ -209,7 +213,7 @@ export default async function StaffTablesPage() {
     0,
   );
   const activeSessionCount = tableSummaries.filter(
-    (table) => table.session,
+    hasActiveCustomerSession,
   ).length;
   const joinedParticipantCount = tableSummaries.reduce(
     (sum, table) => sum + table.participantCount,
