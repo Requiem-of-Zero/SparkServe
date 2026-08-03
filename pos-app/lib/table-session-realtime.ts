@@ -4,20 +4,19 @@ import { getRealtimeUrl } from "@/lib/socket-config";
 
 const realtimeUrl = getRealtimeUrl();
 
-export type FloorRefreshReason =
-  | "attendees-updated"
-  | "cart-changed"
-  | "owner-verified"
-  | "participant-joined"
-  | "session-cancelled"
-  | "session-checked-out"
-  | "session-security-updated"
-  | "table-transfer-updated"
-  | "kitchen-order-submitted";
+export type TableSessionRefreshReason = "session-checked-out";
 
-// Server actions call this after DB writes so staff floor tablets can refresh
-// their server-rendered table/session snapshot without manual reloads.
-export async function notifyFloorChanged(reason: FloorRefreshReason) {
+// Server actions use this to refresh customer table pages after staff-only
+// changes, such as closing the dining visit from the floor tablet.
+export async function notifyTableSessionChanged({
+  message,
+  reason,
+  token,
+}: {
+  message?: string;
+  reason: TableSessionRefreshReason;
+  token: string;
+}) {
   await new Promise<void>((resolve) => {
     const socket = io(realtimeUrl, {
       autoConnect: false,
@@ -32,7 +31,7 @@ export async function notifyFloorChanged(reason: FloorRefreshReason) {
     };
 
     socket.on("connect", () => {
-      socket.emit("floor:notify", { reason });
+      socket.emit("table:notify", { message, reason, token });
       finish();
     });
 

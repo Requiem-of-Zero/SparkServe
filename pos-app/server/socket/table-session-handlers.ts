@@ -566,6 +566,31 @@ export function registerTableSessionHandlers({
   );
 
   socket.on(
+    "table:notify",
+    ({
+      message,
+      reason,
+      token,
+    }: {
+      message?: unknown;
+      reason?: unknown;
+      token?: unknown;
+    }) => {
+      if (typeof token !== "string" || !token) {
+        socket.emit("cart:error", {
+          message: "Invalid table session.",
+        });
+        return;
+      }
+
+      io.to(`table-session:${token}`).emit("table:session-updated", {
+        message: typeof message === "string" ? message.slice(0, 160) : undefined,
+        reason: typeof reason === "string" ? reason.slice(0, 80) : "table-updated",
+      });
+    },
+  );
+
+  socket.on(
     "table:checkout-requested",
     async (
       {

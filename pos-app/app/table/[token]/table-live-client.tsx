@@ -148,12 +148,23 @@ export function TableLiveClient({ token }: { token: string }) {
       setNotice(`${prefix} waiter checkout.`);
     }
 
+    function handleTableSessionUpdated({
+      message,
+    }: {
+      message?: string;
+      reason?: string;
+    }) {
+      setNotice(message ?? "Table session updated.");
+      router.refresh();
+    }
+
     tableSocket.on("connect", handleConnect);
     tableSocket.on("table:joined", handleJoined);
     tableSocket.on("table:participant-joined", handleParticipantJoined);
     tableSocket.on("table:owner-claimed", handleOwnerClaimed);
     tableSocket.on("table:owner-verified", handleOwnerVerified);
     tableSocket.on("table:checkout-requested", handleCheckoutRequested);
+    tableSocket.on("table:session-updated", handleTableSessionUpdated);
     tableSocket.on(
       "table:ownership-transfer-requested",
       handleOwnershipTransferRequested,
@@ -181,6 +192,7 @@ export function TableLiveClient({ token }: { token: string }) {
       tableSocket.off("table:owner-claimed", handleOwnerClaimed);
       tableSocket.off("table:owner-verified", handleOwnerVerified);
       tableSocket.off("table:checkout-requested", handleCheckoutRequested);
+      tableSocket.off("table:session-updated", handleTableSessionUpdated);
       tableSocket.off(
         "table:ownership-transfer-requested",
         handleOwnershipTransferRequested,
