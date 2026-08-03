@@ -555,24 +555,27 @@ Close the table lifecycle.
 
 Focus:
 
-- Customer can checkout with Stripe for dine-in.
+- Staff can close dine-in tables and receive cashless payment.
+- Table guests can notify staff when they are ready to checkout.
 - Customer can checkout with Stripe for takeout.
 - Stripe webhook marks payments as paid.
 - Payments record whether the transaction is dine-in or takeout.
 - Platform fee support works for connected restaurant accounts.
-- Staff can eventually checkout a table with a reader/iPad.
+- Stripe Terminal or staff iPad checkout supports dine-in card payment.
 
 Done when:
 
-- A full table visit can start, order, submit to kitchen, checkout, and close.
+- A full table visit can start, order, submit to kitchen, have staff collect payment, and close.
 - A takeout order can start, checkout, submit to kitchen, and close.
 
 Status: 🟡 In progress
 
 - Partly built.
-- Stripe checkout is connected for dine-in and takeout.
+- Takeout Stripe checkout is connected.
+- Dine-in customer self-checkout has been removed from the table QR flow to keep payment staff-assisted.
+- Dine-in table guests can ping the staff floor tablet when they are ready for checkout.
 - Webhook handling exists.
-- Stripe Terminal/staff card reader flow is future work.
+- Stripe Terminal/staff card reader flow is future work for dine-in.
 - Final order closing and receipt/reporting polish are still needed.
 
 ### 🟡 11. Kitchen Queue
