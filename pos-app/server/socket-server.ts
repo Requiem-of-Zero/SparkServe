@@ -4,6 +4,11 @@ import { randomBytes } from "node:crypto";
 import { Server, type Socket } from "socket.io";
 import { auth } from "../lib/auth";
 import { TableSessionParticipantRole } from "../lib/generated/prisma/enums";
+import {
+  allowedSpiceNotes,
+  sanitizeIngredientIds,
+  sanitizeKitchenNote,
+} from "../lib/menu-customization";
 import { prisma } from "../lib/prisma";
 import {
   canCreateTableParticipant,
@@ -317,22 +322,6 @@ type AdjustCartItemPayload = {
   guestName?: string;
 };
 
-function getSafeNote(value: unknown) {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  const note = value.trim();
-
-  return note ? note.slice(0, 160) : null;
-}
-
-const allowedSpiceNotes = new Set([
-  "Spice: Mild",
-  "Spice: Medium",
-  "Spice: Hot",
-]);
-
 async function resolveStructuredKitchenNote({
   menuItemId,
   note,
@@ -350,20 +339,6 @@ async function resolveStructuredKitchenNote({
   });
 
   return menuItem?.spicy ? note : null;
-}
-
-function getSafeIngredientIds(value: unknown) {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return Array.from(
-    new Set(
-      value
-        .map((id) => Number(id))
-        .filter((id) => Number.isInteger(id) && id > 0),
-    ),
-  ).slice(0, 20);
 }
 
 async function resolveRemovableIngredientIds({
@@ -603,11 +578,11 @@ io.on("connection", (socket) => {
 
         const note = await resolveStructuredKitchenNote({
           menuItemId,
-          note: getSafeNote(rawNote),
+          note: sanitizeKitchenNote(rawNote),
         });
         const removedIngredientIds = await resolveRemovableIngredientIds({
           menuItemId,
-          removedIngredientIds: getSafeIngredientIds(rawRemovedIngredientIds),
+          removedIngredientIds: sanitizeIngredientIds(rawRemovedIngredientIds),
         });
         const orderableSession = await getOrderableTableSession(token);
 

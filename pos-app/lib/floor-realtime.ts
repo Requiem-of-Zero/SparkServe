@@ -1,7 +1,8 @@
 import { io } from "socket.io-client";
 
-const realtimeUrl =
-  process.env.NEXT_PUBLIC_REALTIME_URL ?? "http://192.168.1.58:3001";
+import { getRealtimeUrl } from "@/lib/socket-config";
+
+const realtimeUrl = getRealtimeUrl();
 
 export type FloorRefreshReason =
   | "attendees-updated"

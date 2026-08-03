@@ -11,6 +11,11 @@ import {
   PaymentTransactionType,
 } from "@/lib/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
+import {
+  applyStripeConnectTransfer,
+  getStripeConnectedAccountId,
+  toStripeCurrency,
+} from "@/lib/stripe-checkout";
 import { getStripeClient } from "@/lib/stripe";
 
 type StripeCheckoutRouteProps = {
@@ -18,10 +23,6 @@ type StripeCheckoutRouteProps = {
     token: string;
   }>;
 };
-
-function toStripeCurrency(value: string | null | undefined) {
-  return (value || "usd").toLowerCase();
-}
 
 function buildReturnUrl({
   origin,
@@ -80,9 +81,9 @@ export async function POST(request: NextRequest, { params }: StripeCheckoutRoute
     const currency = toStripeCurrency(restaurantSettings?.currency);
     const platformFeeBasisPoints =
       restaurantSettings?.paymentSettings?.platformFeeBasisPoints ?? 0;
-    const connectedAccountId =
-      restaurantSettings?.paymentSettings?.stripeConnectedAccountId ??
-      process.env.STRIPE_CONNECTED_ACCOUNT_ID;
+    const connectedAccountId = getStripeConnectedAccountId(
+      restaurantSettings?.paymentSettings?.stripeConnectedAccountId,
+    );
     const orders = await prisma.order.findMany({
       where: {
         tableSessionId: tableSession.id,
@@ -140,15 +141,11 @@ export async function POST(request: NextRequest, { params }: StripeCheckoutRoute
         },
       };
 
-    if (connectedAccountId) {
-      paymentIntentData.transfer_data = {
-        destination: connectedAccountId,
-      };
-
-      if (totals.platformFeeCents > 0) {
-        paymentIntentData.application_fee_amount = totals.platformFeeCents;
-      }
-    }
+    applyStripeConnectTransfer({
+      connectedAccountId,
+      paymentIntentData,
+      platformFeeCents: totals.platformFeeCents,
+    });
 
     const stripe = getStripeClient();
     const stripeSession = await stripe.checkout.sessions.create({

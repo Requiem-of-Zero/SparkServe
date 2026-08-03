@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { writeAuditEvent } from "@/lib/audit-log";
 import { requireActiveEmployee } from "@/lib/employee-auth";
 import { notifyFloorChanged } from "@/lib/floor-realtime";
+import { readPositiveInteger } from "@/lib/form-data";
 import {
   TableSessionStatus,
   TableSessionTransferStatus,
@@ -21,16 +22,6 @@ export type FloorSessionControlState = {
   message?: string;
   status: "idle" | "updated" | "cancelled" | "error";
 };
-
-function readPositiveInteger(formData: FormData, key: string) {
-  const value = Number(formData.get(key));
-
-  if (!Number.isInteger(value) || value <= 0) {
-    throw new Error(`${key} is required.`);
-  }
-
-  return value;
-}
 
 function readAttendeeCount(formData: FormData) {
   const attendeeCount = Number(formData.get("attendeeCount"));

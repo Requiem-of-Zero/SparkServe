@@ -11,6 +11,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { calculateOrderTotals } from "@/lib/checkout";
 import { notifyFloorChanged } from "@/lib/floor-realtime";
+import { readRequiredString } from "@/lib/form-data";
 import { notifyKitchenQueueChanged } from "@/lib/kitchen-realtime";
 import { canParticipantRespondToOwnershipTransfer } from "@/lib/table-ownership-transfer";
 import {
@@ -44,16 +45,6 @@ export type SubmitKitchenState = {
   orderId?: number;
   status: "idle" | "code-sent" | "submitted" | "error";
 };
-
-function readRequiredString(formData: FormData, key: string) {
-  const value = formData.get(key);
-
-  if (typeof value !== "string" || value.trim() === "") {
-    throw new Error(`${key} is required.`);
-  }
-
-  return value.trim();
-}
 
 // Verification codes are stored hashed so plaintext codes are never persisted.
 function hashVerificationCode({

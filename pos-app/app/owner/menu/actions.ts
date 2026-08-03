@@ -4,44 +4,16 @@ import { redirect } from "next/navigation";
 
 import { writeAuditEvent } from "@/lib/audit-log";
 import { requireOwner } from "@/lib/employee-auth";
+import {
+  readBoolean,
+  readIdSet,
+  readNonNegativeInteger,
+  readOptionalFile,
+  readOptionalString,
+  readRequiredString,
+} from "@/lib/form-data";
 import { uploadMenuImageToR2 } from "@/lib/menu-image-storage";
 import { prisma } from "@/lib/prisma";
-
-// Small form readers keep server actions focused on menu behavior instead of parsing.
-function readRequiredString(formData: FormData, key: string) {
-  const value = formData.get(key);
-
-  if (typeof value !== "string" || value.trim() === "") {
-    throw new Error(`${key} is required.`);
-  }
-
-  return value.trim();
-}
-
-function readOptionalString(formData: FormData, key: string) {
-  const value = formData.get(key);
-
-  if (typeof value !== "string" || value.trim() === "") {
-    return null;
-  }
-
-  return value.trim();
-}
-
-function readBoolean(formData: FormData, key: string) {
-  return formData.get(key) === "on";
-}
-
-function readPositiveInt(formData: FormData, key: string, fallback = 0) {
-  const value = formData.get(key);
-  const numberValue = Number(value);
-
-  if (!Number.isInteger(numberValue) || numberValue < 0) {
-    return fallback;
-  }
-
-  return numberValue;
-}
 
 function readPriceCents(formData: FormData) {
   const rawPrice = readRequiredString(formData, "price");
@@ -66,25 +38,6 @@ function toCategoryKey(categoryLabel: string | null) {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "") || null
   );
-}
-
-function readIdSet(formData: FormData, key: string) {
-  return new Set(
-    formData
-      .getAll(key)
-      .map((value) => Number(value))
-      .filter((value) => Number.isInteger(value) && value > 0),
-  );
-}
-
-function readOptionalFile(formData: FormData, key: string) {
-  const value = formData.get(key);
-
-  if (!(value instanceof File) || value.size === 0) {
-    return null;
-  }
-
-  return value;
 }
 
 // Replaces the whole ingredient mapping for a menu item so unchecked boxes are removed.
@@ -171,7 +124,7 @@ export async function createIngredientAction(formData: FormData) {
 export async function upsertMenuItemAction(formData: FormData) {
   const owner = await requireOwner();
 
-  const menuItemId = readPositiveInt(formData, "menuItemId");
+  const menuItemId = readNonNegativeInteger(formData, "menuItemId");
   const itemName = readRequiredString(formData, "name");
   const categoryLabel = readOptionalString(formData, "category");
   const uploadedImage = readOptionalFile(formData, "imageFile");
@@ -183,7 +136,7 @@ export async function upsertMenuItemAction(formData: FormData) {
   const data = {
     priceCents: readPriceCents(formData),
     categoryKey: toCategoryKey(categoryLabel),
-    sortOrder: readPositiveInt(formData, "sortOrder"),
+    sortOrder: readNonNegativeInteger(formData, "sortOrder"),
     imageUrl,
     spicy: readBoolean(formData, "spicy"),
     active: readBoolean(formData, "active"),

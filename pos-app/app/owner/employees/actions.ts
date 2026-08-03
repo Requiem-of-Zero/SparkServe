@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { writeAuditEvent } from "@/lib/audit-log";
 import { requireOwner } from "@/lib/employee-auth";
+import { readOptionalString, readRequiredString } from "@/lib/form-data";
 import { EmployeeRole } from "@/lib/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 
@@ -14,26 +15,6 @@ const OWNER_EMPLOYEES_PATH = "/owner/employees";
 
 function generateEmployeeLoginCode() {
   return randomInt(0, 1_000_000).toString().padStart(6, "0");
-}
-
-function readRequiredString(formData: FormData, key: string) {
-  const value = formData.get(key);
-
-  if (typeof value !== "string" || value.trim() === "") {
-    throw new Error(`${key} is required.`);
-  }
-
-  return value.trim();
-}
-
-function readOptionalString(formData: FormData, key: string) {
-  const value = formData.get(key);
-
-  if (typeof value !== "string" || value.trim() === "") {
-    return null;
-  }
-
-  return value.trim();
 }
 
 async function generateUniqueEmployeeCode() {

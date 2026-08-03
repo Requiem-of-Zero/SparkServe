@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 
 import { MenuItemDetailModal } from "@/app/components/menu-item-detail-modal";
+import { MenuItemBadges } from "@/app/components/menu-item-badges";
 import { useCartFlyAnimation } from "@/app/components/use-cart-fly-animation";
 import {
   formatMenuPrice,
@@ -229,24 +230,9 @@ export function TakeoutOrderClient({
                 </div>
 
                 <div className="mt-3 flex items-center justify-end gap-2">
-                  {item.ingredients.some(
-                    (ingredient) => ingredient.commonAllergen,
-                  ) ? (
-                    <span className="mr-auto rounded-full border border-amber-500/40 px-2 py-1 text-xs text-amber-200">
-                      Allergy info
-                    </span>
-                  ) : item.spicy ? (
-                    <span className="mr-auto rounded-full border border-orange-500/40 px-2 py-1 text-xs text-orange-200">
-                      Spice options
-                    </span>
-                  ) : item.ingredients.some(
-                      (ingredient) =>
-                        ingredient.commonAllergen && ingredient.removable,
-                    ) ? (
-                    <span className="mr-auto rounded-full border border-emerald-500/30 px-2 py-1 text-xs text-emerald-200">
-                      Customizable
-                    </span>
-                  ) : null}
+                  <span className="mr-auto">
+                    <MenuItemBadges item={item} />
+                  </span>
                   <TakeoutMenuItemActions
                     item={item}
                     onAdd={(customization) => addItem(item, customization)}

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 
+import { MenuItemBadges } from "@/app/components/menu-item-badges";
 import type { CustomerMenuItem } from "@/lib/menu-display";
 import { AddMenuItemButton } from "./add-menu-item-button";
 
@@ -118,24 +119,7 @@ export function TableMenuSection({
                   ) : null}
 
                   <p className="mt-2 text-xs text-zinc-500">{item.category}</p>
-                  {item.ingredients.some(
-                    (ingredient) => ingredient.commonAllergen,
-                  ) ? (
-                    <p className="mt-2 inline-flex rounded-full border border-amber-500/40 px-2 py-1 text-xs text-amber-200">
-                      Allergy info
-                    </p>
-                  ) : item.spicy ? (
-                    <p className="mt-2 inline-flex rounded-full border border-orange-500/40 px-2 py-1 text-xs text-orange-200">
-                      Spice options
-                    </p>
-                  ) : item.ingredients.some(
-                      (ingredient) =>
-                        ingredient.commonAllergen && ingredient.removable,
-                    ) ? (
-                    <p className="mt-2 inline-flex rounded-full border border-emerald-500/30 px-2 py-1 text-xs text-emerald-200">
-                      Customizable
-                    </p>
-                  ) : null}
+                  <MenuItemBadges item={item} />
                 </div>
 
                 <p className="shrink-0 text-sm font-semibold">

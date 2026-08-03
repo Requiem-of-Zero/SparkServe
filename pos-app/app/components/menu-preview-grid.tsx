@@ -1,6 +1,7 @@
 "use client";
 
 import { MenuItemDetailModal } from "@/app/components/menu-item-detail-modal";
+import { MenuItemBadges } from "@/app/components/menu-item-badges";
 import {
   formatMenuPrice,
   type CustomerMenuItem,
@@ -45,24 +46,7 @@ export function MenuPreviewGrid({ menuItems }: { menuItems: CustomerMenuItem[] }
                 <span className="mt-3 block text-xs uppercase tracking-wide text-zinc-500">
                   {item.category}
                 </span>
-                {item.ingredients.some(
-                  (ingredient) => ingredient.commonAllergen,
-                ) ? (
-                  <span className="mt-3 inline-flex rounded-full border border-amber-500/40 px-2 py-1 text-xs text-amber-200">
-                    Allergy info
-                  </span>
-                ) : item.spicy ? (
-                  <span className="mt-3 inline-flex rounded-full border border-orange-500/40 px-2 py-1 text-xs text-orange-200">
-                    Spice options
-                  </span>
-                ) : item.ingredients.some(
-                    (ingredient) =>
-                      ingredient.commonAllergen && ingredient.removable,
-                  ) ? (
-                  <span className="mt-3 inline-flex rounded-full border border-emerald-500/30 px-2 py-1 text-xs text-emerald-200">
-                    Customizable
-                  </span>
-                ) : null}
+                <MenuItemBadges item={item} />
               </span>
             </span>
           </MenuItemDetailModal>

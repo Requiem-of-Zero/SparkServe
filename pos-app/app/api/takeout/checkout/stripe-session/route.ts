@@ -14,7 +14,19 @@ import {
   TakeoutSessionStatus,
 } from "@/lib/generated/prisma/enums";
 import { notifyKitchenQueueChanged } from "@/lib/kitchen-realtime";
+import {
+  resolveAllowedSpiceNote,
+  resolveRemovableIngredientCustomizations,
+  sanitizeIngredientIds,
+  sanitizeKitchenNote,
+  sanitizeMenuQuantity,
+} from "@/lib/menu-customization";
 import { prisma } from "@/lib/prisma";
+import {
+  applyStripeConnectTransfer,
+  getStripeConnectedAccountId,
+  toStripeCurrency,
+} from "@/lib/stripe-checkout";
 import { getStripeClient } from "@/lib/stripe";
 
 type TakeoutCheckoutItem = {
@@ -23,12 +35,6 @@ type TakeoutCheckoutItem = {
   note: string | null;
   removedIngredientIds: number[];
 };
-
-const allowedSpiceNotes = new Set(["Spice: Mild", "Spice: Medium", "Spice: Hot"]);
-
-function toStripeCurrency(value: string | null | undefined) {
-  return (value || "usd").toLowerCase();
-}
 
 function buildReturnUrl({
   origin,
@@ -57,7 +63,9 @@ function parseTakeoutItems(body: unknown): TakeoutCheckoutItem[] {
     }
 
     const menuItemId = Number((item as { menuItemId?: unknown }).menuItemId);
-    const quantity = Number((item as { quantity?: unknown }).quantity);
+    const quantity = sanitizeMenuQuantity(
+      (item as { quantity?: unknown }).quantity,
+    );
     const rawNote = (item as { note?: unknown }).note;
     const rawRemovedIngredientIds = (item as {
       removedIngredientIds?: unknown;
@@ -67,26 +75,11 @@ function parseTakeoutItems(body: unknown): TakeoutCheckoutItem[] {
       throw new Error("Invalid menu item.");
     }
 
-    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20) {
-      throw new Error("Quantity must be between 1 and 20.");
-    }
-
     return {
       menuItemId,
       quantity,
-      note:
-        typeof rawNote === "string" && rawNote.trim()
-          ? rawNote.trim().slice(0, 160)
-          : null,
-      removedIngredientIds: Array.isArray(rawRemovedIngredientIds)
-        ? Array.from(
-            new Set(
-              rawRemovedIngredientIds
-                .map((id) => Number(id))
-                .filter((id) => Number.isInteger(id) && id > 0),
-            ),
-          ).slice(0, 20)
-        : [],
+      note: sanitizeKitchenNote(rawNote),
+      removedIngredientIds: sanitizeIngredientIds(rawRemovedIngredientIds),
     };
   });
 }
@@ -147,29 +140,18 @@ export async function POST(request: NextRequest) {
         throw new Error("One or more menu items are no longer available.");
       }
 
-      const removedIngredientNames = menuItem.ingredients
-        .filter(
-          (entry) =>
-            entry.removable &&
-            entry.ingredient.commonAllergen &&
-            item.removedIngredientIds.includes(entry.ingredientId),
-        )
-        .map((entry) => entry.ingredient.name);
-      const removedIngredientIds = menuItem.ingredients
-        .filter(
-          (entry) =>
-            entry.removable &&
-            entry.ingredient.commonAllergen &&
-            item.removedIngredientIds.includes(entry.ingredientId),
-        )
-        .map((entry) => entry.ingredientId);
+      const { removedIngredientIds, removedIngredientNames } =
+        resolveRemovableIngredientCustomizations({
+          ingredientIds: item.removedIngredientIds,
+          menuItemIngredients: menuItem.ingredients,
+        });
 
       return {
         ...item,
-        note:
-          menuItem.spicy && item.note && allowedSpiceNotes.has(item.note)
-            ? item.note
-            : null,
+        note: resolveAllowedSpiceNote({
+          note: item.note,
+          spicy: menuItem.spicy,
+        }),
         menuItem,
         removedIngredientIds,
         removedIngredientNames:
@@ -198,9 +180,9 @@ export async function POST(request: NextRequest) {
       totalCents: totals.totalCents,
       basisPoints: platformFeeBasisPoints,
     });
-    const connectedAccountId =
-      restaurantSettings?.paymentSettings?.stripeConnectedAccountId ??
-      process.env.STRIPE_CONNECTED_ACCOUNT_ID;
+    const connectedAccountId = getStripeConnectedAccountId(
+      restaurantSettings?.paymentSettings?.stripeConnectedAccountId,
+    );
     const paymentIntentData: Stripe.Checkout.SessionCreateParams.PaymentIntentData =
       {
         description: "SparkServe takeout order",
@@ -233,15 +215,11 @@ export async function POST(request: NextRequest) {
       takeoutSessionId: String(takeoutSession.id),
     };
 
-    if (connectedAccountId) {
-      paymentIntentData.transfer_data = {
-        destination: connectedAccountId,
-      };
-
-      if (platformFeeCents > 0) {
-        paymentIntentData.application_fee_amount = platformFeeCents;
-      }
-    }
+    applyStripeConnectTransfer({
+      connectedAccountId,
+      paymentIntentData,
+      platformFeeCents,
+    });
 
     const stripeLineItems: Stripe.Checkout.SessionCreateParams.LineItem[] =
       checkoutLines.map((line) => {

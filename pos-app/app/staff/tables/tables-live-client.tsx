@@ -4,8 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { io } from "socket.io-client";
 
-const realtimeUrl =
-  process.env.NEXT_PUBLIC_REALTIME_URL ?? "http://192.168.1.58:3001";
+import { getRealtimeUrl } from "@/lib/socket-config";
+
+const realtimeUrl = getRealtimeUrl();
 
 // Keeps the staff floor terminal live by refreshing the server-rendered table
 // snapshot whenever table sessions, guests, carts, or moves change.
