@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { RestaurantBrandLink } from "@/app/components/restaurant-brand-link";
+import { StaffTableFloorMap } from "@/app/staff/tables/staff-table-floor-map";
 import { TableSessionFloorControls } from "@/app/staff/tables/table-session-floor-controls";
 import { TableSessionTransferForm } from "@/app/staff/tables/table-session-transfer-form";
 import { TableTransferApprovalForm } from "@/app/staff/tables/table-transfer-approval-form";
@@ -138,6 +139,7 @@ function summarizeTable(table: FloorTable) {
   });
 
   return {
+    col: table.col,
     id: table.id,
     isOverCapacity: Boolean(
       session?.attendeeCount && participants.length > session.attendeeCount,
@@ -147,6 +149,8 @@ function summarizeTable(table: FloorTable) {
     openCartQuantity,
     participantCount: participants.length,
     participants,
+    row: table.row,
+    seats: table.seats,
     session,
     status,
     submittedOrderCount:
@@ -222,6 +226,24 @@ export default async function StaffTablesPage() {
     (sum, table) => sum + table.participantCount,
     0,
   );
+  const floorMapTables = tableSummaries.map((table) => ({
+    attendeeCount: table.session?.attendeeCount ?? null,
+    col: table.col,
+    id: table.id,
+    label: table.label,
+    openCartQuantity: table.openCartQuantity,
+    ownerName:
+      table.participants.find((participant) => participant.role === "OWNER")
+        ?.displayName ?? null,
+    participantCount: table.participantCount,
+    row: table.row,
+    seats: table.seats,
+    sessionId: table.session?.id ?? null,
+    status: table.status,
+    statusLabel: getTableFloorStatusLabel(table.status),
+    submittedOrderCount: table.submittedOrderCount,
+    unpaidTotalCents: table.unpaidTotalCents,
+  }));
 
   return (
     <main className="min-h-screen bg-[#100b0b] px-4 py-8 text-[#fff7ed] sm:px-6">
@@ -291,7 +313,12 @@ export default async function StaffTablesPage() {
             <StatusLegend />
           </div>
 
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <StaffTableFloorMap
+            canManageFloorActions={canTransferTables}
+            tables={floorMapTables}
+          />
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {tableSummaries.map((table) => (
               <TableStatusCard
                 key={table.session?.id ?? table.label}
